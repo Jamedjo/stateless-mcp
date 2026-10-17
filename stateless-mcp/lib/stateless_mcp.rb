@@ -9,6 +9,11 @@ require_relative "stateless_mcp/version"
 # carries its own protocol version and is answered on its own, so any process
 # can take any call.
 module StatelessMcp
+  # Raised with a message the model can act on, such as a date it couldn't
+  # read. It is answered as a refused tool call, which the model sees, rather
+  # than a protocol error, which it may not.
+  InvalidArgument = Class.new(StandardError)
+
   # The parsed JSON-RPC body, which the middleware leaves in the Rack env.
   REQUEST_ENV_KEY = "stateless_mcp.request"
 
@@ -26,6 +31,9 @@ require_relative "stateless_mcp/rpc"
 require_relative "stateless_mcp/refusal"
 require_relative "stateless_mcp/server"
 require_relative "stateless_mcp/cursor"
+require_relative "stateless_mcp/pagination"
 require_relative "stateless_mcp/request_body"
 require_relative "stateless_mcp/header_check"
 require_relative "stateless_mcp/middleware"
+require_relative "stateless_mcp/result"
+require_relative "stateless_mcp/tool_declaration"

@@ -63,6 +63,11 @@ Authentication, rate limits and the `Origin` check are the app's, and middleware
 | `StatelessMcp::Rpc.success(id, result)`, `.error(id, code, message, data:)` | JSON-RPC envelopes, from the `mcp` gem |
 | `StatelessMcp::Rpc.status_for(code)` | The HTTP status a JSON-RPC error travels with: 404 for an unknown method, 400 for a malformed request, otherwise 200 |
 | `StatelessMcp::Cursor.encode(*values)`, `.decode(cursor, count:)` | Opaque, URL-safe cursors. Decoding one this library didn't issue raises `StatelessMcp::Cursor::Invalid` |
+| `StatelessMcp::ToolDeclaration.new(title:, description:) { argument … }` | A tool's `tools/list` entry and its arguments' JSON Schema, built per server by `#to_h(name, server)` and `#input_schema(server)` |
+| `StatelessMcp::Result.complete(result, cacheable:)`, `.discover(server, capabilities:)` | Results as 2026-07-28 shapes them: a `resultType`, and cache hints on cacheable ones |
+| `StatelessMcp::Result.tool(payload)`, `.refusal(message)` | A tool's answer as JSON in one text block, and a refusal the model can read |
+| `StatelessMcp::Pagination.limit`, `.list`, `.text` | Paging a list or a long text by position, held to a server's page sizes |
+| `StatelessMcp::InvalidArgument` | Raised with a message the model can act on, and answered as a refused tool call |
 
 ## License
 
