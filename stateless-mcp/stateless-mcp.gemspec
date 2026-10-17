@@ -20,6 +20,7 @@ Gem::Specification.new do |spec|
   spec.files = Dir["lib/**/*.rb", "README.md", "LICENSE-MIT", "LICENSE-APACHE"]
   spec.require_paths = ["lib"]
 
+  spec.add_dependency "base64", ">= 0.2", "< 1"
   spec.add_dependency "mcp", ">= 1.8", "< 2"
   spec.add_dependency "rack", ">= 2.2", "< 4"
 end

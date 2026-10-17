@@ -1,4 +1,6 @@
 require "stateless-mcp"
+require "rack/test"
+require_relative "support/mcp_requests"
 
 RSpec.configure do |config|
   config.disable_monkey_patching!
