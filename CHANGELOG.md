@@ -12,3 +12,5 @@ Both gems share one version and one changelog. The format follows [Keep a Change
 - JSON-RPC errors with the status the spec gives each, and opaque cursors.
 - `StatelessMcp::ToolDeclaration`: a tool's `tools/list` entry and argument schema, with paging described by each server's own page sizes.
 - `StatelessMcp::Result` and `StatelessMcp::Pagination`: results in the shapes 2026-07-28 expects, and cursor paging of lists and long text within a server's page sizes.
+- Rails engine building a default server from `config.stateless_mcp`, and the `mcp_server`, `mcp_resource`, `mcp_member` and `mcp_tool` route macros.
+- `server/discover` and `tools/list` answered from config and routes, with each server listing only its own tools.
