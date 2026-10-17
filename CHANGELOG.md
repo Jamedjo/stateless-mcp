@@ -14,3 +14,5 @@ Both gems share one version and one changelog. The format follows [Keep a Change
 - `StatelessMcp::Result` and `StatelessMcp::Pagination`: results in the shapes 2026-07-28 expects, and cursor paging of lists and long text within a server's page sizes.
 - Rails engine building a default server from `config.stateless_mcp`, and the `mcp_server`, `mcp_resource`, `mcp_member` and `mcp_tool` route macros.
 - `server/discover` and `tools/list` answered from config and routes, with each server listing only its own tools.
+- Tool calls in Rails: arguments checked against the declared schema and read through `tool_params`, text results, refusals the model can act on, and internal errors reported to `Rails.error`.
+- Paging a list or long text by cursor, with `paginate_list` and `paginate_text`.

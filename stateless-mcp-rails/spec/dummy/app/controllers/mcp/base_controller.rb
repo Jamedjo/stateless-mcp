@@ -4,6 +4,9 @@ class Mcp::BaseController < ActionController::API
   include StatelessMcp::Rails::Controller
 
   before_action :refuse_cross_origin
+  # Only for callers that name themselves, so the specs can reach the limit
+  # without sharing a count.
+  rate_limit to: 2, within: 1.minute, by: -> { request.headers["X-Caller"] }, store: ActiveSupport::Cache::MemoryStore.new, if: -> { request.headers["X-Caller"] }
 
   private
 

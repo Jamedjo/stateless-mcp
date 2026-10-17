@@ -2,7 +2,7 @@
 
 Rails support for [stateless-mcp](https://github.com/Jamedjo/stateless-mcp): Model Context Protocol tools as ordinary routes and controller actions. Rails routes pick a tool from the `Mcp-Method` and `Mcp-Name` headers that every 2026-07-28 request carries, and `tools/list` is drawn from those routes.
 
-> **Status:** unreleased, and under construction: tools are declared and listed, but calling them comes next.
+> **Status:** unreleased.
 
 ## Setup
 
@@ -61,6 +61,20 @@ class Mcp::NotesController < Mcp::BaseController
     argument :created_after, :datetime, "ISO 8601 date or time"
     paginated "notes"
   end
+  def index
+    notes = Note.all
+    notes = notes.select { |note| note.tags.include?(tool_params[:tag]) } if tool_params[:tag].present?
+    page, next_cursor = paginate_list(notes)
+    render_tool notes: page.map { |note| { id: note.id, title: note.title } }, next_cursor: next_cursor
+  end
+
+  tool :show, "Gets one note.", title: "Get a note" do
+    argument :note_id, :integer, "The note id from list_notes", required: true
+  end
+  def show
+    note = Note.find_by(id: tool_params[:note_id]) or raise StatelessMcp::InvalidArgument, "No note #{tool_params[:note_id]}"
+    render_tool id: note.id, title: note.title, body: note.body
+  end
 end
 ```
 
@@ -69,6 +83,24 @@ end
 | `tool action, description, title:, annotations:` | Declares the tool `tools/list` shows for an action. Tools are read-only unless `annotations:` says otherwise |
 | `argument name, type, description, required:, **keywords` | One argument. Types are JSON Schema types, plus `:datetime`, which travels as a string. Keywords such as `enum:` go into the schema as given |
 | `paginated noun` | Adds `limit` and `cursor` arguments, described with the server's page sizes |
+
+A call's arguments are checked against the declared schema before the action runs. A missing or mistyped argument is refused with a message the model can act on, and arguments that aren't an object are a malformed call, answered with `-32602`.
+
+| Helper | What it does |
+|---|---|
+| `tool_params` | Strong parameters permitting exactly the declared arguments |
+| `tool_time(name)` | Reads a `:datetime` argument as a `Time`, refusing anything that isn't ISO 8601 |
+| `page_limit` | The page size the call asked for, held to the server's limits |
+| `paginate_list(items)` | One page of a list, and the `next_cursor` for the next while more remain |
+| `paginate_text(part_size) { \|start, length\| … }` | Long text in parts, read a slice at a time, with a `next_cursor` while more remains |
+| `render_tool(hash)` | Answers with the hash as JSON text, leaving out nil values |
+| `refuse(message)` | Answers with an error the model can read and act on |
+| `raise StatelessMcp::InvalidArgument, message` | The same refusal, from anywhere in the action |
+| `mcp_server`, `mcp_request` | The server this request was routed to, and its parsed JSON-RPC body |
+
+Results are text only: the JSON goes in one text block, with no `structuredContent`, since the tools declare no `outputSchema` and clients hand the text to the model either way.
+
+A cursor this library didn't issue is refused. Any other exception the action doesn't rescue is reported to `Rails.error` and reaches the client only as `Internal error`, except the errors Rails answers with a status of its own, such as a rate limit's 429.
 
 ## Auth, rate limits and Origin
 
