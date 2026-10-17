@@ -1,0 +1,17 @@
+# Omakase Ruby styling, with a few house overrides.
+inherit_gem: { rubocop-rails-omakase: rubocop.yml }
+
+AllCops:
+  TargetRubyVersion: 3.2
+  Exclude:
+    - "**/spec/dummy/log/**/*"
+    - "**/spec/dummy/tmp/**/*"
+    - "vendor/**/*"
+
+# `[a, [b, c]]` rather than `[ a, [ b, c ] ]`.
+Layout/SpaceInsideArrayLiteralBrackets:
+  Enabled: false
+
+# A method body on the `def` line hides that a method was defined at all.
+Style/EndlessMethod:
+  EnforcedStyle: disallow

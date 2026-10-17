@@ -1,0 +1,7 @@
+/Gemfile.lock
+/.bundle/
+/vendor/
+*.gem
+.rspec_status
+/stateless-mcp-rails/spec/dummy/log/
+/stateless-mcp-rails/spec/dummy/tmp/

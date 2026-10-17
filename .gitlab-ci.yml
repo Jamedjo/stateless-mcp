@@ -1,0 +1,23 @@
+default:
+  image: ruby:3.4
+  before_script:
+    - bundle install --jobs 4
+  cache:
+    key: bundle
+    paths:
+      - vendor/bundle
+
+variables:
+  BUNDLE_PATH: vendor/bundle
+
+stateless-mcp:
+  script:
+    - cd stateless-mcp && bundle exec rspec
+
+stateless-mcp-rails:
+  script:
+    - cd stateless-mcp-rails && bundle exec rspec
+
+rubocop:
+  script:
+    - bundle exec rubocop
