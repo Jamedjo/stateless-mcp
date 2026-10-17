@@ -16,3 +16,4 @@ Both gems share one version and one changelog. The format follows [Keep a Change
 - `server/discover` and `tools/list` answered from config and routes, with each server listing only its own tools.
 - Tool calls in Rails: arguments checked against the declared schema and read through `tool_params`, text results, refusals the model can act on, and internal errors reported to `Rails.error`.
 - Paging a list or long text by cursor, with `paginate_list` and `paginate_text`.
+- Optional keyset paging for ActiveRecord, `paginate(records)`, from `require "stateless_mcp/rails/active_record"`.

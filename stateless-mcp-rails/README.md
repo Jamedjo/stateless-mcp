@@ -102,6 +102,26 @@ Results are text only: the JSON goes in one text block, with no `structuredConte
 
 A cursor this library didn't issue is refused. Any other exception the action doesn't rescue is reported to `Rails.error` and reaches the client only as `Internal error`, except the errors Rails answers with a status of its own, such as a rate limit's 429.
 
+## Paging ActiveRecord
+
+`paginate_list` pages by position, which suits data that doesn't change between calls. Records that do are better paged by key, with an optional add-on. Neither gem depends on ActiveRecord, so the app requires it itself:
+
+```ruby
+require "stateless_mcp/rails/active_record"
+
+class Mcp::BaseController < ActionController::API
+  include StatelessMcp::Rails::Controller
+  include StatelessMcp::Rails::RecordPagination
+end
+
+def index
+  page, next_cursor = paginate(Note.where(user: current_user))
+  render_tool notes: page.map { |note| { id: note.id, title: note.title } }, next_cursor: next_cursor
+end
+```
+
+`paginate(records, limit: page_limit)` orders newest first by `(created_at, id)` and continues after the last record of the page before, so a deep page costs the same as the first and records added meanwhile don't shift it. Integer and string ids both work.
+
 ## Auth, rate limits and Origin
 
 These are the app's, and the gem doesn't decide them. They belong in the base controller, which the gem's server controller inherits from too, through `config.stateless_mcp.parent_controller`:
