@@ -6,6 +6,7 @@ Both gems share one version and one changelog. The format follows [Keep a Change
 
 ### Added
 
+- Documentation in one README, organised by task, with guides for plain Rack, Sinatra and Rails in `docs/`. Rack and Sinatra examples in `examples/`, smoke checked in CI.
 - `Origin` checked by `StatelessMcp::Middleware`, as the MCP spec requires: another site's page gets `403`. `check_origin` and `allowed_origins` server settings.
 - `stateless-mcp` and `stateless-mcp-rails` gems, locked to the same version.
 - `StatelessMcp::Server`: one endpoint's settings, validated, with a default for each.

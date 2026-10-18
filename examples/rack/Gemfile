@@ -1,0 +1,7 @@
+source "https://rubygems.org"
+
+gem "stateless-mcp", path: "../../stateless-mcp"
+
+# To serve the example with `bundle exec rackup`.
+gem "puma"
+gem "rackup"

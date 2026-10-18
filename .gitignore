@@ -5,3 +5,4 @@
 .rspec_status
 /stateless-mcp-rails/spec/dummy/log/
 /stateless-mcp-rails/spec/dummy/tmp/
+/examples/*/Gemfile.lock

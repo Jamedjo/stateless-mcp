@@ -21,3 +21,16 @@ stateless-mcp-rails:
 rubocop:
   script:
     - bundle exec rubocop
+
+# Each example has its own Gemfile, so the gems' specs never load Sinatra.
+example-rack:
+  variables:
+    BUNDLE_GEMFILE: $CI_PROJECT_DIR/examples/rack/Gemfile
+  script:
+    - cd examples/rack && bundle exec ruby smoke.rb
+
+example-sinatra:
+  variables:
+    BUNDLE_GEMFILE: $CI_PROJECT_DIR/examples/sinatra/Gemfile
+  script:
+    - cd examples/sinatra && bundle exec ruby smoke.rb
