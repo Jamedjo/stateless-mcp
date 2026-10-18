@@ -4,6 +4,10 @@ Both gems share one version and one changelog. The format follows [Keep a Change
 
 ## [Unreleased]
 
+### Changed
+
+- A Rails app no longer boots until `config.stateless_mcp.parent_controller` names the app's own base controller, or `config.stateless_mcp.allow_unauthenticated` is `true`. Without either, anyone who can reach the endpoint can call every tool.
+
 ### Added
 
 - Documentation in one README, organised by task, with guides for plain Rack, Sinatra and Rails in `docs/`. Rack and Sinatra examples in `examples/`, smoke checked in CI.

@@ -32,6 +32,9 @@ Each of these serves a tool called `get_note` at `/mcp`.
 A tool is a route and a controller action. The gem builds `tools/list` from the routes:
 
 ```ruby
+# config/application.rb, until the app adds sign-in: see Authentication
+config.stateless_mcp.allow_unauthenticated = true
+
 # config/routes.rb
 mcp_server module: "mcp" do
   mcp_resource :notes, only: [:show]
@@ -136,7 +139,7 @@ render_tool notes: page.map { |note| { id: note.id, title: note.title } }, next_
 
 ## Authentication
 
-The gems have no authentication. Until the app adds a check, anyone who can reach the endpoint can call every tool.
+The gems have no authentication. Until the app adds a check, anyone who can reach the endpoint can call every tool. In Rails, the app doesn't boot until it sets `parent_controller` to a base controller that authenticates, or sets `allow_unauthenticated = true`.
 
 This table gives the usual place for the check in each framework:
 

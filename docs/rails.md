@@ -15,11 +15,11 @@ This guide uses the `stateless-mcp-rails` gem. Each MCP tool is an ordinary rout
 
 ## Quick start
 
-This serves one tool, `get_note`, at `/mcp`. Every setting has a default, so the config line is optional:
+This serves one tool, `get_note`, at `/mcp`. The app doesn't boot until it sets how MCP requests are authenticated. This example has no sign-in, so it sets `allow_unauthenticated`; [Authentication](#authentication) shows a base controller with sign-in instead:
 
 ```ruby
 # config/application.rb
-config.stateless_mcp.name = "notes"
+config.stateless_mcp.allow_unauthenticated = true
 
 # config/routes.rb
 mcp_server module: "mcp" do
@@ -55,9 +55,10 @@ The gem builds a default server from `config.stateless_mcp`, and adds its middle
 | `page_size`, `max_page_size` | 20, 100 | Default and largest page size for paginated tools |
 | `check_origin`, `allowed_origins` | `true`, none | The [Origin check](../README.md#the-origin-check) |
 | `tool_verbs` | `index: "list", show: "get", …` | How `mcp_resource` names a resource's tools |
-| `parent_controller` | `"ActionController::API"` | The parent class of the gem's server controller |
+| `parent_controller` | `"ActionController::API"` | The parent class of the gem's server controller. The app doesn't boot until this is set to the app's own base controller, or `allow_unauthenticated` is `true` |
+| `allow_unauthenticated` | `false` | `true` boots the app with the default `parent_controller`, for a server that is open on purpose |
 
-All but `parent_controller` are [server settings](rack.md#server-settings). An invalid setting stops the app from booting, with an error that names the setting.
+All but `parent_controller` and `allow_unauthenticated` are [server settings](rack.md#server-settings). An invalid setting stops the app from booting, with an error that names the setting.
 
 ## Routes
 
@@ -170,7 +171,12 @@ end
 
 ## Authentication
 
-The gem has no authentication. Until the app adds a check, anyone who can reach the endpoint can call every tool.
+The gem has no authentication of its own. Without a check, anyone who can reach the endpoint can call every tool, so the app doesn't boot until it sets one of these:
+
+- `parent_controller`, set to a base controller of the app's own that authenticates;
+- `allow_unauthenticated = true`, for a server that is open on purpose.
+
+Whether the base controller authenticates is up to the app. Any `parent_controller` other than `ActionController::API` boots the app, so make sure that controller signs in every request.
 
 Put sign-in and rate limits in a base controller for the tools. Set it as `parent_controller` too, so the gem's server controller for `server/discover` and `tools/list` inherits the same checks:
 
@@ -187,7 +193,7 @@ class Mcp::BaseController < ActionController::API
 end
 ```
 
-Without `parent_controller`, the server controller's parent is `ActionController::API`, and anyone who can reach the endpoint can call `server/discover` and `tools/list`.
+A tool controller that doesn't inherit from the base controller has no sign-in, even when `parent_controller` is set.
 
 ## Several servers
 
