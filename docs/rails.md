@@ -217,3 +217,5 @@ Each server's `tools/list` shows only the tools routed to its path, and each ser
 ## Testing
 
 Request specs can post to the endpoint with `rack-test`, with the headers and `_meta` envelope from the [Rack guide's testing section](rack.md#testing). The gem's own specs do this against a small app in `stateless-mcp-rails/spec/dummy`.
+
+`bin/rails mcp:tools` prints each server's tools, with each tool's title, controller action and read-only hint. It reads the same routes as `tools/list`, so the two always match. With `VERBOSE=1`, it also prints each tool's argument schema as one line of JSON.

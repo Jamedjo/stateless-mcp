@@ -13,7 +13,7 @@ module StatelessMcp
       end
 
       def tools
-        tools = Routing.tools(mcp_server, _routes).map { |name, controller, action| controller.mcp_tool_declaration(action).to_h(name, mcp_server) }
+        tools = Routing.listed_tools(mcp_server, _routes).map(&:first)
         render_result Result.complete({ tools: tools }, cacheable: true)
       end
 

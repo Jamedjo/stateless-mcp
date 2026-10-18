@@ -13,6 +13,15 @@ module StatelessMcp
       config.stateless_mcp.parent_controller = DEFAULT_PARENT_CONTROLLER
       config.stateless_mcp.allow_unauthenticated = false
 
+      rake_tasks do
+        namespace :mcp do
+          desc "Lists each MCP server's tools. VERBOSE=1 adds each tool's argument schema"
+          task tools: :environment do
+            puts ToolsReport.new(::Rails.application.routes, verbose: ENV["VERBOSE"].present?)
+          end
+        end
+      end
+
       initializer "stateless_mcp.routing" do
         ActionDispatch::Routing::Mapper.include(Routing)
       end

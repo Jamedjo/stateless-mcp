@@ -16,6 +16,10 @@ module StatelessMcp
     module Routing
       SERVER_CONTROLLER = "stateless_mcp/rails/server"
 
+      # The servers each route set draws, by path. An app has one route set, so
+      # holding on to them costs nothing.
+      DRAWN_SERVERS = Hash.new { |sets, route_set| sets[route_set] = {} }.compare_by_identity
+
       # Matches a request by the headers the middleware has already checked
       # against its body.
       class Constraint
@@ -39,6 +43,23 @@ module StatelessMcp
         end
       end
 
+      # Each tool's tools/list entry, with the controller and action it's
+      # routed to. tools/list and `rake mcp:tools` both read this, so the two
+      # always agree.
+      def self.listed_tools(server, route_set)
+        tools(server, route_set).map do |name, controller, action|
+          [controller.mcp_tool_declaration(action).to_h(name, server), controller, action]
+        end
+      end
+
+      # Each server drawn with mcp_server and still routed, in the order the
+      # routes are drawn. Reading the routes first loads them if Rails has
+      # deferred that.
+      def self.servers(route_set)
+        routed_paths = route_set.routes.map { |route| route.path.spec.to_s }
+        DRAWN_SERVERS[route_set].values.select { |server| routed_paths.include?(server.path) }
+      end
+
       # Draws a server's routes: its tools, from the block, and the protocol's
       # own methods, answered by the controller given. Options such as module:
       # scope the tools' controllers but not the server controller. The server
@@ -48,6 +69,7 @@ module StatelessMcp
         server ||= StatelessMcp::Rails.default_server
         raise ArgumentError, "mcp_server draws at its server's own path, #{server.path}, so it can't be inside a path scope" if @scope[:path]
         @mcp_server = server
+        DRAWN_SERVERS[@set][server.path] = server
         scope(as: nil, format: false) do
           mcp_method MCP::Methods::SERVER_DISCOVER, to: "#{controller}#discover"
           mcp_method MCP::Methods::TOOLS_LIST, to: "#{controller}#tools"

@@ -51,4 +51,5 @@ end
 require_relative "rails/routing"
 require_relative "rails/controller"
 require_relative "rails/server_actions"
+require_relative "rails/tools_report"
 require_relative "rails/engine"
