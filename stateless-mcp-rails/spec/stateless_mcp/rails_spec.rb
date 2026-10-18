@@ -3,6 +3,12 @@ RSpec.describe StatelessMcp::Rails do
     expect(StatelessMcp::VERSION).to eq(Gem::Specification.load(File.expand_path("../../stateless-mcp-rails.gemspec", __dir__)).version.to_s)
   end
 
+  it "ships the repository's licences, unchanged" do
+    %w[LICENSE-MIT LICENSE-APACHE].each do |file|
+      expect(File.read(File.join(__dir__, "../..", file))).to eq(File.read(File.join(__dir__, "../../..", file)))
+    end
+  end
+
   it "builds the default server from config.stateless_mcp" do
     expect(described_class.default_server).to have_attributes(path: "/mcp", name: "notes", version: "2.0.0", max_body_bytes: 4096, page_size: 2, max_page_size: 100)
   end

@@ -2,7 +2,7 @@
 
 Ruby gems for serving [Model Context Protocol](https://modelcontextprotocol.io/specification/2026-07-28) tools over plain HTTP, without sessions, from Rack, Sinatra or Rails.
 
-> **Status:** unreleased. Nothing is on RubyGems yet.
+> **Status:** early. Releases before 1.0 may change the API.
 
 In the 2026-07-28 revision of MCP, each request includes its protocol version, and the response is a plain JSON body. There is no session or open stream between requests, so any process behind a load balancer can handle any request.
 
@@ -17,7 +17,7 @@ gem "stateless-mcp-rails"  # Rails, which includes stateless-mcp
 
 Then run `bundle install`.
 
-Until the first release, use a checkout of this repository instead, as the examples do:
+To try unreleased changes, use a checkout of this repository instead, as the examples do:
 
 ```ruby
 gem "stateless-mcp", path: "../stateless-mcp/stateless-mcp"

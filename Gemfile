@@ -4,6 +4,7 @@ gemspec path: "stateless-mcp"
 gemspec path: "stateless-mcp-rails"
 
 gem "rack-test"
+gem "rake", require: false # `rake release`, from the Rakefile at the root
 gem "rspec", "~> 3.13"
 gem "rubocop-rails-omakase", require: false
 

@@ -2,7 +2,7 @@
 
 Rack middleware and building blocks for serving [Model Context Protocol](https://modelcontextprotocol.io/specification/2026-07-28) tools without sessions, from any Rack app, Sinatra included.
 
-> **Status:** unreleased. Nothing is on RubyGems yet.
+> **Status:** early. Releases before 1.0 may change the API.
 
 ```ruby
 gem "stateless-mcp"

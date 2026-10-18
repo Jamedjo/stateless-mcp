@@ -13,12 +13,13 @@ Gem::Specification.new do |spec|
   spec.required_ruby_version = ">= 3.2"
 
   spec.metadata["homepage_uri"] = spec.homepage
-  spec.metadata["source_code_uri"] = "https://github.com/Jamedjo/stateless-mcp"
-  spec.metadata["changelog_uri"] = "https://github.com/Jamedjo/stateless-mcp/blob/main/CHANGELOG.md"
+  spec.metadata["source_code_uri"] = "https://github.com/Jamedjo/stateless-mcp/tree/v#{spec.version}/stateless-mcp-rails"
+  spec.metadata["changelog_uri"] = "https://github.com/Jamedjo/stateless-mcp/blob/main/stateless-mcp-rails/CHANGELOG.md"
   spec.metadata["documentation_uri"] = "https://github.com/Jamedjo/stateless-mcp/blob/main/README.md"
+  spec.metadata["bug_tracker_uri"] = "https://github.com/Jamedjo/stateless-mcp/issues"
   spec.metadata["rubygems_mfa_required"] = "true"
 
-  spec.files = Dir["lib/**/*.rb", "app/**/*.rb", "README.md", "LICENSE-MIT", "LICENSE-APACHE"]
+  spec.files = Dir["lib/**/*.rb", "app/**/*.rb", "README.md", "CHANGELOG.md", "LICENSE-MIT", "LICENSE-APACHE"]
   spec.require_paths = ["lib"]
 
   spec.add_dependency "stateless-mcp", StatelessMcp::VERSION

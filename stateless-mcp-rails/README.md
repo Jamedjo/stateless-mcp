@@ -2,7 +2,7 @@
 
 Rails support for [stateless-mcp](https://github.com/Jamedjo/stateless-mcp): [Model Context Protocol](https://modelcontextprotocol.io/specification/2026-07-28) tools as ordinary routes and controller actions, served without sessions.
 
-> **Status:** unreleased. Nothing is on RubyGems yet.
+> **Status:** early. Releases before 1.0 may change the API.
 
 ```ruby
 gem "stateless-mcp-rails"
