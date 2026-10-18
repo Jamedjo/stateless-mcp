@@ -64,9 +64,16 @@ RSpec.describe "An MCP server's own methods", type: :request do
   end
 
   it "runs the app's base controller first, as the server controller inherits from it" do
+    post_mcp "/mcp", "tools/list", {}, headers: { "HTTP_X_REFUSE" => "yes" }
+
+    expect(last_response.status).to eq(403)
+  end
+
+  it "refuses a request from another site's page before the app sees it" do
     post_mcp "/mcp", "tools/list", {}, headers: { "HTTP_ORIGIN" => "https://elsewhere.example" }
 
     expect(last_response.status).to eq(403)
+    expect(json_response.dig("error", "message")).to eq("Origin not allowed")
   end
 
   describe "two servers in one app" do

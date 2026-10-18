@@ -66,7 +66,7 @@ end
 
 ## What the app keeps
 
-Sign-in, rate limits and the `Origin` check are the app's: they go in the base controller its tools inherit from, or in middleware ahead of the server's. OAuth, for hosted clients such as claude.ai, will follow as an optional part of these gems, and clients on protocol revisions before 2026-07-28 may follow too.
+Sign-in and rate limits are the app's: they go in the base controller its tools inherit from, or in middleware ahead of the server's. The gems refuse requests from other sites' pages themselves, by their `Origin` header. OAuth, for hosted clients such as claude.ai, will follow as an optional part of these gems, and clients on protocol revisions before 2026-07-28 may follow too.
 
 ## What comes from the `mcp` gem
 

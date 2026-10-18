@@ -122,7 +122,7 @@ end
 
 `paginate(records, limit: page_limit)` orders newest first by `(created_at, id)` and continues after the last record of the page before, so a deep page costs the same as the first and records added meanwhile don't shift it. Integer and string ids both work.
 
-## Auth, rate limits and Origin
+## Auth and rate limits
 
 These are the app's, and the gem doesn't decide them. They belong in the base controller, which the gem's server controller inherits from too, through `config.stateless_mcp.parent_controller`:
 
@@ -131,19 +131,13 @@ class Mcp::BaseController < ActionController::API
   include StatelessMcp::Rails::Controller
 
   before_action :authenticate
-  before_action :refuse_cross_origin
   rate_limit to: 20, within: 1.minute, by: -> { current_user.id }, scope: "mcp"
-
-  private
-
-  # A page in a browser must not drive the tools with someone's credentials.
-  def refuse_cross_origin
-    head :forbidden if request.origin.present? && request.origin != request.base_url
-  end
 end
 ```
 
 Without `parent_controller`, the server controller inherits from `ActionController::API`, and `server/discover` and `tools/list` are open to anyone who can reach the endpoint.
+
+The `Origin` check is the gem's: a request from another site's page gets `403` before the app sees it. `config.stateless_mcp.allowed_origins` lets other origins through, and `config.stateless_mcp.check_origin = false` turns the check off.
 
 OAuth will slot in as middleware ahead of the server's: it checks the bearer token before the body is read, answers a request without one with a `401` and a `WWW-Authenticate` challenge, and leaves the verified token in the Rack env for the base controller to sign the caller in from.
 

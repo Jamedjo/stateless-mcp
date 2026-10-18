@@ -7,7 +7,9 @@ module StatelessMcp
   #
   #   use StatelessMcp::Middleware, server: StatelessMcp::Server.new(path: "/mcp")
   #
-  # Authentication, rate limits and the Origin check are the app's, so
+  # A request whose Origin header names another site is refused with a 403
+  # before anything else, unless the server allows that origin or has
+  # check_origin off. Authentication and rate limits are the app's, so
   # middleware doing them goes before this one: a request it refuses is then
   # never read.
   class Middleware
@@ -20,6 +22,7 @@ module StatelessMcp
     def call(env)
       return @app.call(env) unless @server.endpoint?(env)
       env[Server::ENV_KEY] = @server
+      return forbidden_origin unless @server.origin_allowed?(env)
       return method_not_allowed if ["GET", "DELETE"].include?(env["REQUEST_METHOD"])
       return @app.call(env) unless env["REQUEST_METHOD"] == "POST"
       body = env[REQUEST_ENV_KEY] = RequestBody.read(env, max_bytes: @server.max_body_bytes)
@@ -35,6 +38,11 @@ module StatelessMcp
     # means deciding here which rules a request is held to.
     def check(env, body)
       HeaderCheck.check!(env, body)
+    end
+
+    # The spec allows a JSON-RPC error without an id in the body.
+    def forbidden_origin
+      [403, { "content-type" => "application/json" }, [JSON.generate(Rpc.error(nil, Rpc::ErrorCode::INVALID_REQUEST, "Origin not allowed"))]]
     end
 
     # Clients on earlier revisions open a stream with GET and end a session

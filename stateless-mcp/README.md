@@ -19,6 +19,8 @@ admin = StatelessMcp::Server.new(path: "/admin/mcp", name: "admin", max_body_byt
 | `name`, `version`, `title` | `"mcp"`, `"1.0.0"`, none | The `serverInfo` clients are shown |
 | `instructions` | none | Guidance for the model on using the server as a whole |
 | `max_body_bytes` | 1 MB | Larger bodies are refused before the rest is read |
+| `check_origin` | `true` | Refuses a request whose `Origin` header names another site, as the MCP spec requires. Requests without an `Origin`, from non-browser clients, are unaffected |
+| `allowed_origins` | none | Other origins that may call the server, such as `"https://app.example"` |
 | `page_size` | 20 | Page size when a call asks for none |
 | `max_page_size` | 100 | The largest page a call may ask for |
 | `tool_verbs` | `index: "list", show: "get", …` | How a resource's actions name its tools. Merged over the defaults |
@@ -54,7 +56,7 @@ GET and DELETE, which earlier revisions use for streams and sessions, get `405 M
 
 A request that passes reaches the app with the server in `env[StatelessMcp::Server::ENV_KEY]` and the parsed body in `env[StatelessMcp::REQUEST_ENV_KEY]`. The body is put back as a fresh `rack.input`, so the app can parse it again as it would any other request. A base64-wrapped `Mcp-Name` is decoded in the env.
 
-Authentication, rate limits and the `Origin` check are the app's, and middleware doing them goes before this one, so a request they refuse is never read.
+Before anything else, a request whose `Origin` header names a site other than the server's own, or one in `allowed_origins`, gets `403` with a JSON-RPC error and no id. Authentication and rate limits are the app's, and middleware doing them goes before this one, so a request they refuse is never read.
 
 ## Building blocks
 

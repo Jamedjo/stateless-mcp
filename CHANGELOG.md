@@ -6,6 +6,7 @@ Both gems share one version and one changelog. The format follows [Keep a Change
 
 ### Added
 
+- `Origin` checked by `StatelessMcp::Middleware`, as the MCP spec requires: another site's page gets `403`. `check_origin` and `allowed_origins` server settings.
 - `stateless-mcp` and `stateless-mcp-rails` gems, locked to the same version.
 - `StatelessMcp::Server`: one endpoint's settings, validated, with a default for each.
 - `StatelessMcp::Middleware`: reads a server's JSON-RPC body within its limit and refuses requests whose 2026-07-28 headers disagree with it.

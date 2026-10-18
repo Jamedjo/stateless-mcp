@@ -1,6 +1,8 @@
 require "base64"
 require "json"
+require "rack"
 require "stringio"
+require "uri"
 require "mcp"
 require "mcp/server/transports/streamable_http_transport"
 require_relative "stateless_mcp/version"

@@ -56,6 +56,53 @@ RSpec.describe StatelessMcp::Middleware do
     expect(last_response.status).to eq(405)
   end
 
+  describe "the Origin header" do
+    it "refuses another site, before reading the body or answering GET" do
+      input = StringIO.new(JSON.generate(mcp_body("tools/list")))
+      response = Rack::MockRequest.new(app).post("/mcp", mcp_headers("tools/list").merge(input: input, "HTTP_ORIGIN" => "https://evil.example"))
+
+      expect(response.status).to eq(403)
+      expect(JSON.parse(response.body)).to eq("jsonrpc" => "2.0", "id" => nil, "error" => { "code" => -32600, "message" => "Origin not allowed" })
+      expect(input.pos).to eq(0)
+      expect(Rack::MockRequest.new(app).get("/mcp", "HTTP_ORIGIN" => "https://evil.example").status).to eq(403)
+      expect(seen).to be_empty
+    end
+
+    it "lets through the server's own origin, compared without case, and requests without one" do
+      post_mcp "/mcp", "tools/list", {}, headers: { "HTTP_ORIGIN" => "HTTP://Example.org" }
+      expect(last_response.status).to eq(200)
+
+      post_mcp "/mcp", "tools/list"
+      expect(last_response.status).to eq(200)
+    end
+
+    it "refuses an opaque origin such as a sandboxed frame's" do
+      post_mcp "/mcp", "tools/list", {}, headers: { "HTTP_ORIGIN" => "null" }
+
+      expect(last_response.status).to eq(403)
+    end
+
+    context "with allowed_origins" do
+      let(:server) { StatelessMcp::Server.new(path: "/mcp", allowed_origins: ["https://App.example"]) }
+
+      it "lets those origins through" do
+        post_mcp "/mcp", "tools/list", {}, headers: { "HTTP_ORIGIN" => "https://app.example" }
+
+        expect(last_response.status).to eq(200)
+      end
+    end
+
+    context "with check_origin off" do
+      let(:server) { StatelessMcp::Server.new(path: "/mcp", check_origin: false) }
+
+      it "lets any origin through" do
+        post_mcp "/mcp", "tools/list", {}, headers: { "HTTP_ORIGIN" => "https://evil.example" }
+
+        expect(last_response.status).to eq(200)
+      end
+    end
+  end
+
   describe "the request body" do
     it "is refused past max_body_bytes" do
       post_mcp "/mcp", "tools/list", { padding: "a" * 2048 }

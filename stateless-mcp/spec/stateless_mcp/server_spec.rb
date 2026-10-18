@@ -4,6 +4,11 @@ RSpec.describe StatelessMcp::Server do
 
     expect(server).to have_attributes(path: "/mcp", name: "mcp", version: "1.0.0", title: nil, instructions: nil, max_body_bytes: 1_048_576, page_size: 20, max_page_size: 100)
     expect(server.tool_verbs).to include(index: "list", show: "get", destroy: "delete")
+    expect(server).to have_attributes(check_origin: true, allowed_origins: [])
+  end
+
+  it "keeps allowed_origins in lower case, as they're compared without case" do
+    expect(described_class.new(allowed_origins: ["https://App.Example:8443"]).allowed_origins).to eq(["https://app.example:8443"])
   end
 
   it "takes nil as the default, as unset Rails config arrives" do
@@ -74,6 +79,17 @@ RSpec.describe StatelessMcp::Server do
     it "refuses tool_verbs that aren't a hash of non-empty strings" do
       expect(error_for(tool_verbs: ["list"])).to start_with("tool_verbs must be a hash")
       expect(error_for(tool_verbs: { index: "" })).to start_with("tool_verbs[:index] must be")
+    end
+
+    it "refuses check_origin that isn't true or false" do
+      expect(error_for(check_origin: "no")).to start_with("check_origin must be true or false")
+    end
+
+    it "refuses allowed_origins that aren't a list of bare origins" do
+      expect(error_for(allowed_origins: "https://app.example")).to start_with("allowed_origins must be an array")
+      ["app.example", "https://app.example/", "https://app.example/path", "https://user@app.example", "https://app.example?x=1", "ftp://app.example"].each do |origin|
+        expect(error_for(allowed_origins: [origin])).to start_with("allowed_origins entries must be origins"), "expected #{origin.inspect} to be refused"
+      end
     end
 
     it "is an ArgumentError" do

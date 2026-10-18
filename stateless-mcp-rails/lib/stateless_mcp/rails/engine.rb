@@ -8,7 +8,7 @@ module StatelessMcp
       config.stateless_mcp = ActiveSupport::OrderedOptions.new
       # Every StatelessMcp::Server setting can be set here too, such as path,
       # name and max_body_bytes. The server controller inherits from this one,
-      # so the app's sign-in, rate limits and Origin check cover it too.
+      # so the app's sign-in and rate limits cover it too.
       config.stateless_mcp.parent_controller = "ActionController::API"
 
       initializer "stateless_mcp.routing" do
