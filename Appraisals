@@ -1,5 +1,6 @@
 # Extra gemfiles for running the specs against other versions of a
-# dependency. `bundle exec appraisal install` writes them to gemfiles/.
+# dependency, or with gems the main suites don't load.
+# `bundle exec appraisal install` writes them to gemfiles/.
 
 # The oldest and newest Rails versions stateless-mcp-rails supports, and
 # those between. The main Gemfile has the latest.
@@ -11,4 +12,10 @@
     # json 3 drops an option Active Support passes before 8.1.
     gem "json", "< 3"
   end
+end
+
+# For the Doorkeeper recipe spec in docs/oauth-storage-moving.md, which needs
+# the doorkeeper gem.
+appraise "doorkeeper" do
+  gem "doorkeeper", "~> 5.8"
 end

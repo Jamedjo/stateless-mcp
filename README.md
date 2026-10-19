@@ -149,7 +149,23 @@ This table gives the usual place for the check in each framework:
 | Rack | Middleware listed before `StatelessMcp::Middleware` | [Rack guide](docs/rack.md#authentication) |
 | Sinatra | A `before "/mcp"` filter, or Rack middleware | [Sinatra guide](docs/sinatra.md#authentication) |
 
-OAuth support is planned.
+### OAuth
+
+`stateless-mcp-oauth` is in progress and not released yet. It will let an app act as the OAuth server for MCP clients. Storage is customizable. A subclass of `StatelessMcp::OAuth::Storage` reads and writes OAuth state in the app's tables:
+
+```ruby
+class McpOAuthStorage < StatelessMcp::OAuth::Storage
+  def create_grant(code_id:, authorization_request:, approved_by:) # and find_grant, revoke_grant
+    code_id if McpGrant.insert({ id: code_id, **authorization_request, user_id: approved_by[:user_id] }).any?
+  end
+
+  def issue_token(claims) # and read_token, consume_refresh_token
+    encryptor.encrypt_and_sign(claims, purpose: :mcp_oauth_token)
+  end
+end
+```
+
+[How the OAuth gem works](docs/oauth.md) covers the sign-in. [OAuth storage](docs/oauth-storage.md) covers the storage methods, with tested examples.
 
 ## The Origin check
 

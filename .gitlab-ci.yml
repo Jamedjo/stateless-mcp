@@ -28,6 +28,19 @@ stateless-mcp-rails-older:
   script:
     - cd stateless-mcp-rails && bundle exec rspec
 
+stateless-mcp-oauth:
+  script:
+    - cd stateless-mcp-oauth && bundle exec rspec
+    - cd stateless-mcp-oauth && bundle exec ruby -Itest test/storage_check_test.rb
+
+# Runs the Doorkeeper recipe spec with gemfiles/doorkeeper.gemfile, which
+# Appraisal generates from Appraisals.
+stateless-mcp-oauth-doorkeeper:
+  variables:
+    BUNDLE_GEMFILE: $CI_PROJECT_DIR/gemfiles/doorkeeper.gemfile
+  script:
+    - cd stateless-mcp-oauth && bundle exec rspec spec/doorkeeper_recipe_spec.rb
+
 rubocop:
   script:
     - bundle exec rubocop
