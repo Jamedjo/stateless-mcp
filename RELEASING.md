@@ -21,12 +21,13 @@ Both gemspecs set `rubygems_mfa_required`, so RubyGems.org refuses any push of t
 2. In each gem's `CHANGELOG.md`, move the Unreleased entries under the new version with today's date, and update the compare links at the bottom. A gem with no changes gets an entry saying it was released to keep the versions in step.
 3. Merge on GitLab.
 4. Sync `main` to GitHub: `git fetch gitlab && git push github gitlab/main:main`.
-5. Release from the merged commit: `git checkout --detach gitlab/main && bundle exec rake release`.
+5. Check out the merged commit, for example `git switch main && git pull`, and run `bundle exec rake release`.
 
-`rake release` refuses to start unless the working tree is clean, HEAD is `gitlab/main`, and the version's tag doesn't exist yet. It then:
+`rake release` releases the commit checked out, from any branch. A fix for an older version, or an embargoed security fix, can be released from its own branch without going through `main`. It warns when the commit isn't on any GitLab branch, and refuses a version whose tag is already on another commit. It then:
 
-1. Builds `stateless-mcp`, then `stateless-mcp-rails`, into `pkg/`.
-2. Tags `v<version>` and pushes the tag to `gitlab` and `github`.
-3. Pushes `stateless-mcp`, then `stateless-mcp-rails`, to RubyGems.org, reading a fresh code from the YubiKey with `ykman oath accounts code -s rubygems.org` before each push. Without `ykman`, `gem push` asks for the code.
+1. Exports the commit with `git archive`, so uncommitted and ignored files never reach a gem.
+2. Builds `stateless-mcp`, then `stateless-mcp-rails`, from the export into `pkg/`, dated by the commit so the same commit always builds the same gems.
+3. Tags the commit `v<version>`, and pushes the tag to `gitlab` and `github`.
+4. Pushes `stateless-mcp`, then `stateless-mcp-rails`, to RubyGems.org. Before each push it reads a fresh code from the YubiKey with `ykman oath accounts code -s rubygems.org`, and the key needs a touch. Without `ykman`, `gem push` asks for the code.
 
-If a gem push fails after the tag is pushed, the task prints the `gem push` commands still to run.
+If it stops part way, for instance when the YubiKey isn't touched in time, run it again. It keeps the tag already on the commit and pushes only the gems RubyGems.org doesn't have yet.
