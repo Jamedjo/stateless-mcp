@@ -4,7 +4,7 @@ Changes to the `stateless-mcp` gem. The Rails integration has [its own changelog
 
 ## [Unreleased]
 
-## [0.0.1] - Unreleased
+## [0.0.1] - 2026-10-19
 
 First release: a Rack endpoint for the stateless MCP protocol, 2026-07-28.
 

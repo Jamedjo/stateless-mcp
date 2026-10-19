@@ -4,7 +4,7 @@ Changes to the `stateless-mcp-rails` gem. It's released at the same version as `
 
 ## [Unreleased]
 
-## [0.0.1] - Unreleased
+## [0.0.1] - 2026-10-19
 
 First release: MCP servers declared in Rails routes, with tools as controller actions.
 
