@@ -1,14 +1,14 @@
 # stateless-mcp
 
-Ruby gems for serving [Model Context Protocol](https://modelcontextprotocol.io/specification/2026-07-28) tools over plain HTTP, without sessions, from Rack, Sinatra or Rails.
+[![stateless-mcp](https://img.shields.io/gem/v/stateless-mcp?label=stateless-mcp)](https://rubygems.org/gems/stateless-mcp) [![stateless-mcp-rails](https://img.shields.io/gem/v/stateless-mcp-rails?label=stateless-mcp-rails)](https://rubygems.org/gems/stateless-mcp-rails)
 
-> **Status:** early. Releases before 1.0 may change the API.
+Ruby gems for serving [Model Context Protocol](https://modelcontextprotocol.io/specification/2026-07-28) tools over plain HTTP, without sessions, from Rack, Sinatra or Rails.
 
 In the 2026-07-28 revision of MCP, each request includes its protocol version, and the response is a plain JSON body. There is no session or open stream between requests, so any process behind a load balancer can handle any request.
 
 ## Installation
 
-Add the gem for your framework to the app's Gemfile:
+Add the gem for your framework, [stateless-mcp](https://rubygems.org/gems/stateless-mcp) or [stateless-mcp-rails](https://rubygems.org/gems/stateless-mcp-rails), to the app's Gemfile:
 
 ```ruby
 gem "stateless-mcp"        # Rack or Sinatra

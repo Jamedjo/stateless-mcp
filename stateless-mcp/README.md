@@ -1,8 +1,8 @@
 # stateless-mcp
 
-Rack middleware and building blocks for serving [Model Context Protocol](https://modelcontextprotocol.io/specification/2026-07-28) tools without sessions, from any Rack app, Sinatra included.
+[![stateless-mcp](https://img.shields.io/gem/v/stateless-mcp?label=stateless-mcp)](https://rubygems.org/gems/stateless-mcp)
 
-> **Status:** early. Releases before 1.0 may change the API.
+Rack middleware and building blocks for serving [Model Context Protocol](https://modelcontextprotocol.io/specification/2026-07-28) tools without sessions, from any Rack app, Sinatra included.
 
 ```ruby
 gem "stateless-mcp"
