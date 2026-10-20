@@ -217,6 +217,13 @@ bundle install
 bundle exec rubocop
 ```
 
+The Rails gem's specs also run against Rails 7.2 and 8.0, using gemfiles that [Appraisal](https://github.com/thoughtbot/appraisal) writes from `Appraisals`:
+
+```sh
+bundle exec appraisal install
+(cd stateless-mcp-rails && BUNDLE_GEMFILE=$PWD/../gemfiles/rails_7_2.gemfile bundle exec rspec)
+```
+
 Each example has its own Gemfile, so the gems' specs never load Sinatra. Each smoke check sends requests to its example, and compares the example's code with the copy in its guide:
 
 ```sh

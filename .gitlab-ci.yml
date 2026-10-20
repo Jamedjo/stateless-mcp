@@ -18,6 +18,16 @@ stateless-mcp-rails:
   script:
     - cd stateless-mcp-rails && bundle exec rspec
 
+# Older Rails versions, from the gemfiles Appraisal writes from Appraisals.
+stateless-mcp-rails-older:
+  parallel:
+    matrix:
+      - RAILS: ["7_2", "8_0"]
+  variables:
+    BUNDLE_GEMFILE: $CI_PROJECT_DIR/gemfiles/rails_$RAILS.gemfile
+  script:
+    - cd stateless-mcp-rails && bundle exec rspec
+
 rubocop:
   script:
     - bundle exec rubocop

@@ -23,6 +23,6 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "stateless-mcp", StatelessMcp::VERSION
-  spec.add_dependency "actionpack", ">= 7.1", "< 9"
-  spec.add_dependency "railties", ">= 7.1", "< 9"
+  spec.add_dependency "actionpack", ">= 7.2", "< 9"
+  spec.add_dependency "railties", ">= 7.2", "< 9"
 end

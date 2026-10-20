@@ -1,4 +1,5 @@
 /Gemfile.lock
+/gemfiles/*.gemfile.lock
 /.bundle/
 /vendor/
 *.gem
@@ -6,4 +7,5 @@
 /stateless-mcp-rails/spec/dummy/log/
 /stateless-mcp-rails/spec/dummy/tmp/
 /examples/*/Gemfile.lock
+/gemfiles/*.gemfile.lock
 /pkg/

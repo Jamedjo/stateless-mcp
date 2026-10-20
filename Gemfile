@@ -3,6 +3,7 @@ source "https://rubygems.org"
 gemspec path: "stateless-mcp"
 gemspec path: "stateless-mcp-rails"
 
+gem "appraisal", require: false # gemfiles/ for specs against other gem versions
 gem "rack-test"
 gem "rake", require: false # `rake release`, from the Rakefile at the root
 gem "rspec", "~> 3.13"
