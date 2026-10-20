@@ -6,8 +6,8 @@ Gem::Specification.new do |spec|
   spec.authors = ["James Edwards-Jones"]
   spec.email = ["git@jamedjo.co.uk"]
 
-  spec.summary = "Model Context Protocol tools as ordinary Rails routes and controller actions"
-  spec.description = "Rails support for stateless-mcp: a tool is a controller action, routed by the Mcp-Method and Mcp-Name headers of the 2026-07-28 Model Context Protocol, and tools/list is drawn from the routes."
+  spec.summary = "MCP tools as Rails routes and controller actions"
+  spec.description = "MCP tools are declared in config/routes.rb with mcp_server and mcp_resource, and each tool is a controller action. tools/list is built from the routes. Arguments are checked against each tool's schema before the action runs. Sign-in and rate limits use the app's own before_action and rate_limit. Built on stateless-mcp, for MCP 2026-07-28."
   spec.homepage = "https://github.com/Jamedjo/stateless-mcp"
   spec.licenses = ["MIT", "Apache-2.0"]
   spec.required_ruby_version = ">= 3.2"

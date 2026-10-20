@@ -6,8 +6,8 @@ Gem::Specification.new do |spec|
   spec.authors = ["James Edwards-Jones"]
   spec.email = ["git@jamedjo.co.uk"]
 
-  spec.summary = "Stateless Model Context Protocol servers over plain HTTP, for any Rack app"
-  spec.description = "Serves the 2026-07-28 Model Context Protocol without sessions: every request is answered on its own, so any instance behind a load balancer can take any call. Rack middleware, JSON-RPC errors, cursors and tool schemas, with Rails support in stateless-mcp-rails."
+  spec.summary = "MCP servers routed like REST APIs, built for MCP 2026-07-28"
+  spec.description = "In MCP 2026-07-28, every request has Mcp-Method and Mcp-Name headers, and there are no sessions. stateless-mcp is built on those headers from the ground up. MCP tools are routed like REST endpoints in the app's Rack or Sinatra stack, instead of in a separate session-based server. The gem provides the request checks, JSON-RPC errors, tool schemas and cursor paging. Rails apps use stateless-mcp-rails."
   spec.homepage = "https://github.com/Jamedjo/stateless-mcp"
   spec.licenses = ["MIT", "Apache-2.0"]
   spec.required_ruby_version = ">= 3.2"
