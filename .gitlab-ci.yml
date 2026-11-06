@@ -30,8 +30,9 @@ stateless-mcp-rails-older:
 
 stateless-mcp-oauth:
   script:
-    - cd stateless-mcp-oauth && bundle exec rspec
-    - cd stateless-mcp-oauth && bundle exec ruby -Itest test/storage_check_test.rb
+    - cd stateless-mcp-oauth
+    - bundle exec rspec
+    - bundle exec ruby -Itest test/storage_check_test.rb
 
 # Runs the Doorkeeper recipe spec with gemfiles/doorkeeper.gemfile, which
 # Appraisal generates from Appraisals.
