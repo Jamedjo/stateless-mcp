@@ -2,7 +2,7 @@
 
 MCP clients, such as Claude, sign people in with OAuth. `stateless-mcp-oauth` will let an app act as the OAuth server for them, using the app's sign-in and consent pages.
 
-> **In progress.** Storage, request checks, the OAuth server's metadata and client checks exist. The consent page helpers and the token endpoint are still to come, so nothing issues tokens yet, and the gem isn't released.
+> **In progress.** Everything up to the consent page exists. The token endpoint is still to come, so nothing issues access tokens yet, and the gem isn't released.
 
 ## A sign-in
 
@@ -108,16 +108,96 @@ MCP_OAUTH_SERVER = StatelessMcp::OAuth::AuthorizationServer.new(
   The proxy resolves the host and makes the connection, so ssrf_filter's checks no longer apply. The proxy must refuse internal addresses itself. The gem's other rules still do: https only, no redirects, a 200 served as JSON, uncompressed, within 5 KB and a few seconds.
 - **Documents are cached** for as long as their `Cache-Control` header allows, between a minute and a day. By default the cache is in the Ruby process's memory. Pass `client_metadata_cache: Rails.cache` to share it between processes.
 
+### The consent page
+
+The app serves the consent page at the OAuth server's `authorization_path`. The person signs in to the app as usual. The page shows which client is asking for access, and the person approves or denies it.
+
+`MCP_OAUTH_SERVER.authorization_request(params)` checks the client's request, in the order RFC 6749 sets:
+
+- **If the client or redirect URI can't be trusted,** `authorization_request` raises a `StatelessMcp::OAuth::Error`. The app shows the error message to the person, and doesn't redirect.
+- **Any other problem,** such as a missing PKCE challenge or an unknown scope, is returned by `problem`. `error_redirect_url` returns the URL that reports it to the client.
+- **On approval,** `approve(user_id: current_user.id)` issues the authorization code through the MCP server's storage. It returns the URL that sends the person back to the client with the authorization code. Its keyword arguments become `approved_by`, which `create_grant` gets when the authorization code is exchanged.
+- **On denial,** `deny` returns the URL to send the person back with `access_denied`.
+
+Nothing is stored until `approve`, so showing the page on a GET is safe. In Rails:
+
+```ruby
+# app/controllers/mcp_authorizations_controller.rb
+class McpAuthorizationsController < ApplicationController
+  before_action :authenticate_user! # the app's sign-in
+  before_action :load_authorization
+
+  def new
+  end
+
+  def create
+    url = params[:decision] == "approve" ? @authorization.approve(user_id: current_user.id) : @authorization.deny
+    redirect_to url, allow_other_host: true
+  end
+
+  private
+    # If the client or redirect URI can't be trusted, show the error to the
+    # person and don't redirect. Send any other problem to the client.
+    def load_authorization
+      @authorization = MCP_OAUTH_SERVER.authorization_request(params)
+      redirect_to @authorization.error_redirect_url, allow_other_host: true if @authorization.problem
+    rescue StatelessMcp::OAuth::Error => error
+      render plain: error.message, status: :bad_request
+    end
+end
+```
+
+```erb
+<%# app/views/mcp_authorizations/new.html.erb %>
+<% client = @authorization.client %>
+<h1>Allow <%= client.name %> to use your notes?</h1>
+
+<p>
+  It's from <strong><%= client.host %></strong>.
+  Allowing it sends you back to <strong><%= @authorization.redirect_host %></strong>.
+</p>
+
+<% if @authorization.loopback_redirect? %>
+  <p>That's an app on this computer. Only allow it if you just started connecting an app you trust.</p>
+<% end %>
+
+<% if @authorization.scopes.any? %>
+  <p>It asks for: <%= @authorization.scopes.to_sentence %>.</p>
+<% end %>
+
+<%= form_with url: request.path, method: :post do |form| %>
+  <% @authorization.params.each do |name, value| %>
+    <%= hidden_field_tag name, value, id: nil %>
+  <% end %>
+  <%= form.button "Allow", name: "decision", value: "approve" %>
+  <%= form.button "Deny", name: "decision", value: "deny" %>
+<% end %>
+```
+
+```ruby
+# config/routes.rb, inside Rails.application.routes.draw
+get MCP_OAUTH_SERVER.authorization_path, to: "mcp_authorizations#new"
+post MCP_OAUTH_SERVER.authorization_path, to: "mcp_authorizations#create"
+```
+
+- **The page should show where the person goes back to,** because that's where the authorization code is sent. `loopback_redirect?` is true when the redirect URI points to an app on the person's computer.
+- **The form posts the request's params back** with the app's CSRF token, so the approval can't come from another site.
+- **The consent page mustn't be shown in a frame,** or another site could trick the person into clicking Allow. Rails sends `X-Frame-Options: SAMEORIGIN` by default. A Rack or Sinatra app sends `Content-Security-Policy: frame-ancestors 'none'` on the consent page itself.
+- **A client that asks for no scope** gets the MCP server's `default_scopes`, which are none unless the app lists some, such as `default_scopes: ["notes:read"]` beside `scopes:`. With none, the request has an `invalid_scope` problem.
+
+A Rack or Sinatra app calls the same methods from its routes.
+
 ## What the app provides
 
 - **Storage:** a subclass of `StatelessMcp::OAuth::Storage`, storing grants and tokens however the app chooses. See [OAuth storage](oauth-storage.md).
-- **Sign-in and consent pages,** in the app's style.
+- **Sign-in and consent pages,** in the app's style. The gem checks the authorization request, and issues the authorization code on approval.
 - **A check before each MCP request,** as [above](#checking-mcp-requests).
 
 ## What the gem provides
 
 - **Request checks:** `verified_grant`, the 401's headers and the metadata.
 - **The OAuth server's metadata, and client checks:** fetching each client's metadata document safely, and checking it.
+- **The authorization request:** its checks, the authorization code on approval, and the redirects back to the client.
 - **The OAuth endpoints and their checks:** PKCE, redirect URIs, scopes and expiry. These are still to come.
 - **The order of storage calls,** so a token can't be used twice, even if a call fails.
 - **`StorageCheck`,** which tests the app's storage class from Minitest or RSpec.

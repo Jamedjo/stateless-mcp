@@ -16,12 +16,14 @@ module StatelessMcp
       METADATA_PATH = "/.well-known/oauth-authorization-server".freeze
       GRANT_TYPES = %w[authorization_code refresh_token].freeze
 
-      attr_reader :issuer, :protected_resources, :scopes, :authorization_path, :token_path, :client_metadata_transport, :client_metadata_cache, :localhost_redirects
+      attr_reader :issuer, :protected_resources, :scopes, :authorization_path, :token_path, :code_ttl, :client_metadata_transport, :client_metadata_cache, :localhost_redirects
 
       # issuer is the server's origin, such as "https://notes.example".
       # protected_resources are the StatelessMcp::OAuth::ProtectedResource
       # objects it issues tokens for. Each one's authorization_server must equal
       # issuer.
+      #
+      # code_ttl is how many seconds an authorization code lasts.
       #
       # client_metadata_transport makes the connection when a client's metadata
       # document is fetched. It defaults to a DocumentTransport, which needs the
@@ -33,7 +35,7 @@ module StatelessMcp
       #
       # localhost_redirects: false accepts only 127.0.0.1 and [::1] as loopback
       # redirect URIs. See ClientMetadata.fetch.
-      def initialize(issuer:, protected_resources:, authorization_path: "/oauth/authorize", token_path: "/oauth/token", client_metadata_transport: nil, client_metadata_cache: nil, localhost_redirects: true)
+      def initialize(issuer:, protected_resources:, authorization_path: "/oauth/authorize", token_path: "/oauth/token", code_ttl: 120, client_metadata_transport: nil, client_metadata_cache: nil, localhost_redirects: true)
         @issuer = origin(issuer)
         @protected_resources = Array(protected_resources).freeze
         raise ArgumentError, "protected_resources must list at least one StatelessMcp::OAuth::ProtectedResource" if @protected_resources.empty?
@@ -43,6 +45,8 @@ module StatelessMcp
         @scopes = @protected_resources.flat_map(&:scopes).uniq.freeze
         @authorization_path = path(authorization_path, "authorization_path")
         @token_path = path(token_path, "token_path")
+        raise ArgumentError, "code_ttl must be a positive number of seconds; got #{code_ttl.inspect}" unless code_ttl.is_a?(Integer) && code_ttl.positive?
+        @code_ttl = code_ttl
         @client_metadata_transport = client_metadata_transport || DocumentTransport.new
         @client_metadata_cache = client_metadata_cache || MemoryCache.new
         @localhost_redirects = localhost_redirects ? true : false
@@ -57,9 +61,20 @@ module StatelessMcp
         "#{issuer}#{token_path}"
       end
 
-      # The ProtectedResource for a resource URL a client names, or nil.
+      # The ProtectedResource for a resource URL from a client, or nil. The
+      # scheme and host are compared case-insensitively, as the MCP spec
+      # requires. The rest of the URL must match exactly.
       def protected_resource(resource)
-        protected_resources.find { |protected_resource| protected_resource.resource == resource }
+        wanted = canonical(resource) or return nil
+        protected_resources.find { |protected_resource| canonical(protected_resource.resource) == wanted }
+      end
+
+      # A client's request to sign a person in, from the authorization
+      # endpoint's params, as a StatelessMcp::OAuth::AuthorizationRequest.
+      # Raises StatelessMcp::OAuth::Error when the client or its redirect_uri
+      # can't be trusted.
+      def authorization_request(params)
+        AuthorizationRequest.new(params, authorization_server: self)
       end
 
       # The client's metadata document, fetched from its client_id and checked,
@@ -112,6 +127,13 @@ module StatelessMcp
           raise ArgumentError, "issuer must be an https origin, such as \"https://notes.example\", with no path; got #{url.inspect}"
         rescue URI::InvalidURIError
           raise ArgumentError, "issuer must be an https origin, such as \"https://notes.example\", with no path; got #{url.inspect}"
+        end
+
+        def canonical(url)
+          uri = URI(url.to_s)
+          uri.normalize.to_s if uri.is_a?(URI::HTTP) && uri.host && uri.fragment.nil?
+        rescue URI::InvalidURIError
+          nil
         end
 
         def path(value, name)

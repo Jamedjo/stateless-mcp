@@ -16,16 +16,19 @@ module StatelessMcp
       # Far longer than any token a storage class issues.
       MAX_HEADER = 4096
 
-      attr_reader :resource, :authorization_server, :storage, :scopes
+      attr_reader :resource, :authorization_server, :storage, :scopes, :default_scopes
 
       # resource is the MCP server's URL, which clients name when they sign in.
       # authorization_server is the URL of the OAuth server that issues its
-      # tokens. scopes are the scopes a client can ask for.
-      def initialize(resource:, authorization_server:, storage:, scopes: [])
+      # tokens. scopes are the scopes a client can ask for. default_scopes are
+      # the ones a client gets when it asks for none.
+      def initialize(resource:, authorization_server:, storage:, scopes: [], default_scopes: [])
         @resource = absolute_url(resource, "resource")
         @authorization_server = absolute_url(authorization_server, "authorization_server")
         @storage = storage
         @scopes = scopes.map(&:to_s).freeze
+        @default_scopes = default_scopes.map(&:to_s).freeze
+        raise ArgumentError, "default_scopes must be among scopes; got #{(@default_scopes - @scopes).join(", ")}" unless (@default_scopes - @scopes).empty?
         freeze
       end
 

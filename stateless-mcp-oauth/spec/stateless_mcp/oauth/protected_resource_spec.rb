@@ -124,6 +124,10 @@ RSpec.describe StatelessMcp::OAuth::ProtectedResource do
     expect(described_class.new(resource: "https://mcp.example/", authorization_server: "https://mcp.example", storage: storage).metadata_path).to eq("/.well-known/oauth-protected-resource")
   end
 
+  it "refuses default scopes it doesn't offer" do
+    expect { described_class.new(resource: "https://notes.example/mcp", authorization_server: "https://notes.example", storage: storage, scopes: ["notes:read"], default_scopes: ["notes:write"]) }.to raise_error(ArgumentError, /notes:write/)
+  end
+
   it "refuses URLs a client couldn't trust" do
     expect { described_class.new(resource: "http://notes.example/mcp", authorization_server: "https://notes.example", storage: storage) }.to raise_error(ArgumentError, /resource must be an https URL/)
     expect { described_class.new(resource: "https://notes.example/mcp?x=1", authorization_server: "https://notes.example", storage: storage) }.to raise_error(ArgumentError, /query or fragment/)

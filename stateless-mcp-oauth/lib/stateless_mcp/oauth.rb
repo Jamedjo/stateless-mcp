@@ -12,6 +12,7 @@ require_relative "oauth/document_transport"
 require_relative "oauth/memory_cache"
 require_relative "oauth/protected_resource"
 require_relative "oauth/authorization_server"
+require_relative "oauth/authorization_request"
 
 module StatelessMcp
   # OAuth for MCP clients. It has an authorization server, which signs people

@@ -1,0 +1,24 @@
+<%# app/views/mcp_authorizations/new.html.erb %>
+<% client = @authorization.client %>
+<h1>Allow <%= client.name %> to use your notes?</h1>
+
+<p>
+  It's from <strong><%= client.host %></strong>.
+  Allowing it sends you back to <strong><%= @authorization.redirect_host %></strong>.
+</p>
+
+<% if @authorization.loopback_redirect? %>
+  <p>That's an app on this computer. Only allow it if you just started connecting an app you trust.</p>
+<% end %>
+
+<% if @authorization.scopes.any? %>
+  <p>It asks for: <%= @authorization.scopes.to_sentence %>.</p>
+<% end %>
+
+<%= form_with url: request.path, method: :post do |form| %>
+  <% @authorization.params.each do |name, value| %>
+    <%= hidden_field_tag name, value, id: nil %>
+  <% end %>
+  <%= form.button "Allow", name: "decision", value: "approve" %>
+  <%= form.button "Deny", name: "decision", value: "deny" %>
+<% end %>
