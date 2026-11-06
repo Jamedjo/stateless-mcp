@@ -10,8 +10,11 @@ module StatelessMcp
     end
 
     # A request whose id is missing or malformed is answered with a null id.
+    # JSON-RPC 2.0 requires the id in every error response, and mcp 1.9 leaves
+    # out one it can't use, so the id is always set here.
     def self.error(id, code, message, data: nil)
-      JsonRpcHandler.error_response(id: id.nil? ? :unknown_id : id, id_validation_pattern: JsonRpcHandler::DEFAULT_ALLOWED_ID_CHARACTERS, error: { code: code, message: message, data: data })
+      response = JsonRpcHandler.error_response(id: id.nil? ? :unknown_id : id, id_validation_pattern: JsonRpcHandler::DEFAULT_ALLOWED_ID_CHARACTERS, error: { code: code, message: message, data: data })
+      { jsonrpc: response[:jsonrpc], id: response[:id], error: response[:error] }
     end
 
     # A 404 carrying a JSON-RPC body tells a client it reached a current server
