@@ -105,9 +105,9 @@ RSpec.describe "The OAuth storage recipes" do
   end
 
   it "appear word for word in the docs" do
-    docs = %w[oauth-storage.md oauth-storage-moving.md].map { |file| File.read(File.join(__dir__, "../../docs", file)) }.join
+    docs = %w[docs/oauth.md docs/oauth-storage.md docs/oauth-storage-moving.md README.md].map { |file| File.read(File.join(__dir__, "../..", file)) }.join
 
-    Dir[File.join(OAuthRecipes::DIR, "*", "*.rb")].each do |file|
+    Dir[File.join(OAuthRecipes::DIR, "*", "*.{rb,ru}")].each do |file|
       expect(docs).to include(File.read(file)), "the docs don't quote #{file} exactly"
     end
   end
