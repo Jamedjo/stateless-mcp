@@ -15,7 +15,11 @@ module StatelessMcp
       CHALLENGE = /\A[A-Za-z0-9\-_]{43}\z/
 
       def self.challenge?(challenge)
-        challenge.is_a?(String) && CHALLENGE.match?(challenge)
+        format?(CHALLENGE, challenge)
+      end
+
+      def self.verifier?(verifier)
+        format?(VERIFIER, verifier)
       end
 
       def self.challenge_for(verifier)
@@ -25,9 +29,16 @@ module StatelessMcp
       # Compared in constant time, so the time taken says nothing about how
       # much of the challenge matched.
       def self.verified?(verifier, challenge)
-        return false unless verifier.is_a?(String) && VERIFIER.match?(verifier) && challenge?(challenge)
-        Rack::Utils.secure_compare(challenge_for(verifier), challenge)
+        verifier?(verifier) && challenge?(challenge) && Rack::Utils.secure_compare(challenge_for(verifier), challenge)
       end
+
+      # Only ASCII strings are matched, so a string with invalid bytes or a
+      # wide encoding is refused rather than raising.
+      def self.format?(pattern, value)
+        value.is_a?(String) && value.ascii_only? && pattern.match?(value)
+      end
+
+      private_class_method :format?
     end
   end
 end
