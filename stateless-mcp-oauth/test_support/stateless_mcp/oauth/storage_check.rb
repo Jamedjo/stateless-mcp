@@ -28,8 +28,9 @@ module StatelessMcp
         unknown_grant: "finds no grant for an unknown id",
         used_code: "returns nil for an authorization code already exchanged, leaving every field of its grant unchanged",
         revoked_grant: "stops finding a revoked grant, and still returns nil for its authorization code",
+        reused_code: "revokes the grant an authorization code made, when the code is exchanged again",
         create_grant_race: "creates one grant when requests race to exchange the same authorization code",
-        token_round_trip: "reads back the claims of each kind of token",
+        token_round_trip: "reads back the claims of each kind of token, issued as the gem issues them",
         token_characters: "issues tokens safe to send in a header or form without encoding",
         unknown_tokens: "returns nil for tokens it didn't issue",
         revoked_token: "stops a revoked token working, by revoking the token or its grant",
@@ -118,6 +119,14 @@ module StatelessMcp
         check(@storage.create_grant(**arguments).nil?, "create_grant made a new grant for a revoked grant's authorization code")
       end
 
+      def reused_code
+        arguments = grant_arguments
+        id = @storage.create_grant(**arguments)
+        check(@storage.create_grant(**arguments).nil?, "create_grant returned a grant id for an authorization code already exchanged")
+        @storage.revoke_grant_for_code(arguments[:code_id])
+        check(@storage.find_grant(id).nil?, "revoke_grant_for_code didn't revoke the grant its authorization code made")
+      end
+
       def create_grant_race
         arguments = grant_arguments
         created = in_threads { @storage.create_grant(**arguments) }.compact.size
@@ -126,8 +135,9 @@ module StatelessMcp
 
       def token_round_trip
         grant_id = new_grant
-        [claims(:code), claims(:access, grant_id), claims(:refresh, grant_id)].each do |issued|
-          read = Claims.from_h(read_claims(@storage.issue_token(issued)))
+        code, access, refresh = claims(:code), claims(:access, grant_id), claims(:refresh, grant_id)
+        [[code, @storage.issue_token(code)], *[access, refresh].zip(@storage.issue_tokens(access, refresh))].each do |issued, token|
+          read = Claims.from_h(read_claims(token))
           check(read == Claims.from_h(issued), "read_token returned #{read.inspect} for a #{issued[:kind]} token issued with #{issued.inspect}")
         end
       end

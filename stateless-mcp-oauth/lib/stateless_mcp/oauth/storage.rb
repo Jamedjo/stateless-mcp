@@ -13,8 +13,9 @@ module StatelessMcp
     # OAuth state in its own database, and encrypts tokens with a library it
     # already trusts, or keeps them as rows.
     #
-    # Every method is required except issue_tokens and revoke_token. Each must be atomic. On an
-    # error, raise. Never return a wrong value.
+    # Every method is required except revoke_grant_for_code, issue_tokens and
+    # revoke_token. Each must be atomic. On an error, raise. Never return a
+    # wrong value.
     class Storage
       # Records a grant when an authorization code is exchanged, and returns
       # the new grant's id as a String.
@@ -44,7 +45,19 @@ module StatelessMcp
         raise NotImplementedError, "#{self.class.name} must define revoke_grant"
       end
 
-      # Returns the token string for a hash of claims.
+      # Revokes the grant an authorization code made, when the code is
+      # exchanged again: a second exchange means the code may have been
+      # stolen (RFC 6749 section 4.1.2). Optional: by default it revokes the
+      # grant whose id is code_id, which is right when create_grant uses
+      # code_id as the grant's id. A subclass that chooses other grant ids
+      # overrides it.
+      def revoke_grant_for_code(code_id)
+        revoke_grant(code_id)
+      end
+
+      # Returns the token string for a hash of claims. The gem calls it for
+      # authorization codes. Access and refresh tokens are issued in pairs,
+      # through issue_tokens, which calls it by default.
       def issue_token(claims)
         raise NotImplementedError, "#{self.class.name} must define issue_token"
       end

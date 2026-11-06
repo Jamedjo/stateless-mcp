@@ -53,11 +53,12 @@ module UsageRecipe
     ROUTES.draw do
       #{File.read(File.join(DIR, "routes.rb"))}
       #{File.read(File.join(__dir__, "recipes/server/routes.rb"))}
+      #{File.read(File.join(__dir__, "recipes/server/token_routes.rb"))}
       post "/mcp", to: NotesController.action(:show)
     end
   RUBY
 
-  RACK_APP = module_eval("Rack::Builder.new { #{File.read(File.join(__dir__, "recipes/server/config.ru"))}\nrun ->(_env) { [404, {}, []] } }", File.join(__dir__, "recipes/server/config.ru"))
+  RACK_APP = module_eval("Rack::Builder.new { #{File.read(File.join(__dir__, "recipes/server/config.ru"))}\n#{File.read(File.join(__dir__, "recipes/server/token_config.ru"))}\nrun ->(_env) { [404, {}, []] } }", File.join(__dir__, "recipes/server/config.ru"))
 end
 
 RSpec.describe "The OAuth usage examples" do
@@ -100,6 +101,13 @@ RSpec.describe "The OAuth usage examples" do
 
       expect(last_response.status).to eq(200)
       expect(JSON.parse(last_response.body)).to include("issuer" => "https://notes.example", "token_endpoint" => "https://notes.example/oauth/token")
+    end
+
+    it "serves the token endpoint" do
+      post "/oauth/token", grant_type: "authorization_code", client_id: "https://claude.ai/client.json", code: "nonsense"
+
+      expect(last_response.status).to eq(400)
+      expect(JSON.parse(last_response.body)).to include("error" => "invalid_grant")
     end
 
     it "serves the metadata the 401 points at" do

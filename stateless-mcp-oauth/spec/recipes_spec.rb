@@ -67,7 +67,7 @@ RSpec.describe "The OAuth storage recipes" do
 
     it "revokes one token, leaving its grant" do
       storage.create_grant(code_id: "kept", authorization_request: { client_id: "c", resource: "r", scope: "s" }, approved_by: { user_id: 1 })
-      token = storage.issue_token(refresh("kept"))
+      token = storage.issue_tokens(access("kept"), refresh("kept")).last
 
       storage.revoke_token(symbolize(storage.read_token(token)))
 

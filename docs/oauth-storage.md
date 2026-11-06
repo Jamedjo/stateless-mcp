@@ -21,6 +21,7 @@ Authorization codes, access tokens and refresh tokens all belong to a grant.
 create_grant(code_id:, authorization_request:, approved_by:) # => the new grant's id, or nil
 find_grant(id)                                               # => the grant, or nil
 revoke_grant(id)
+revoke_grant_for_code(code_id)                               # optional
 ```
 
 - **`create_grant`** runs when a client exchanges an authorization code for its first tokens. It returns the new grant's id as a String. The storage chooses the id. The examples use the authorization code's id, which is the simplest way to meet the requirements below.
@@ -30,6 +31,7 @@ revoke_grant(id)
 - **`approved_by`** is whatever attributes the app passed when the person approved, such as `{ user_id: 42 }`, or `{ org_id:, bot_id: }`. The gem never reads them, and the app reads them back from its own grant. The storage can keep the two hashes in one table or split them, such as with a table of clients.
 - **`find_grant`** returns the app's own object for the grant. The gem only calls `client_id`, `resource` and `scope` on it. It returns `nil` once the grant is revoked.
 - **`revoke_grant`** ends the grant and every token in it.
+- **`revoke_grant_for_code`** runs when an authorization code is exchanged again, since the code may have been stolen. It revokes the grant that code made. It's optional: by default it calls `revoke_grant(code_id)`, which is right when grant ids are code ids, as in the examples.
 
 ### Tokens
 
@@ -49,7 +51,7 @@ The gem passes each token's details, its *claims*, to `issue_token` as a hash:
 
 `kind` is `"code"` for an authorization code, `"access"` or `"refresh"`. An authorization code's claims have no `grant_id`, because its grant is created when it's exchanged. They have `authorization_request` and `approved_by` instead. The authorization request also has the `redirect_uri` and `code_challenge` the token endpoint checks.
 
-- **`issue_token`** returns the string the client is given. It can add keys of its own to the claims.
+- **`issue_token`** returns the string the client is given. It can add keys of its own to the claims. The gem calls it for authorization codes, and `issue_tokens` calls it for access and refresh tokens unless overridden, so a refresh token is always issued with its access token.
 - **`issue_tokens`** issues an access token and a refresh token together, when an authorization code or a refresh token is exchanged. It's optional: by default it calls `issue_token` for each. Override it to store the pair together, or to note the newest refresh token on the grant, as the encrypted tokens example does.
 - **`read_token`** returns the claims for a token string, including any keys `issue_token` added. It returns `nil` for a token it didn't issue, or one that was revoked. The gem validates the claims and checks expiry.
 - **`consume_refresh_token`** marks a refresh token used. It returns `true` the first time and `false` after that, even when two requests race. `false` means the refresh token was copied, so the gem revokes the grant.

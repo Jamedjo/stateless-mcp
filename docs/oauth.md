@@ -2,13 +2,13 @@
 
 MCP clients, such as Claude, sign people in with OAuth. `stateless-mcp-oauth` will let an app act as the OAuth server for them, using the app's sign-in and consent pages.
 
-> **In progress.** Everything up to the consent page exists. The token endpoint is still to come, so nothing issues access tokens yet, and the gem isn't released.
+> **Not released yet.** Every step of a sign-in is built and tested end to end.
 
 ## A sign-in
 
 1. **The client finds the app's OAuth server** from the MCP server's metadata. The client's ID is the URL of its metadata document, so the client doesn't need to register first.
 2. **The person signs in to the app and approves the client** on the app's consent page. That approval is a *grant*: one person allowing one client to use one MCP server.
-3. **The app gives the client an authorization code.** The client exchanges the authorization code for an access token and a refresh token. PKCE proves it's the same client that started the sign-in.
+3. **The app gives the client an authorization code.** The client exchanges the authorization code for an access token and a refresh token. PKCE proves it's the same client that started the sign-in. An authorization code works once. If it's exchanged again, it may have been stolen, so the gem revokes the grant it made.
 4. **The client sends the access token with each MCP request.** The app's `before_action` or middleware uses the gem to find the token's grant, and reads who approved from it.
 5. **When the access token expires,** the client exchanges its refresh token for a new access token and refresh token. Each refresh token works once. If a used refresh token is sent again, it must have been copied, so the gem revokes the grant.
 
@@ -187,6 +187,27 @@ post MCP_OAUTH_SERVER.authorization_path, to: "mcp_authorizations#create"
 
 A Rack or Sinatra app calls the same methods from its routes.
 
+### The token endpoint
+
+At the token endpoint, a client exchanges an authorization code for an access token and a refresh token. Later, it exchanges the refresh token for new tokens. In Rails:
+
+```ruby
+# config/routes.rb, inside Rails.application.routes.draw
+post MCP_OAUTH_SERVER.token_path, to: MCP_OAUTH_SERVER.token_app
+```
+
+In a Rack or Sinatra app:
+
+```ruby
+# config.ru
+map(MCP_OAUTH_SERVER.token_path) { run MCP_OAUTH_SERVER.token_app }
+```
+
+- **Exchanging an authorization code** needs the PKCE code verifier, client ID and redirect URI from its authorization request. The storage's `create_grant` is called only after those checks pass, so someone without the code verifier can't use up another client's authorization code.
+- **Refreshing** consumes the used refresh token before issuing new ones. If a client sends a refresh token that was already used, the token must have been copied, and the grant is revoked.
+- **Tokens last** two minutes for an authorization code, an hour for an access token and 30 days for a refresh token. Pass `code_ttl:`, `access_token_ttl:` or `refresh_token_ttl:` to change them.
+- **Clients are public,** with no secret. A request with a secret or an `Authorization` header gets a 401.
+
 ## What the app provides
 
 - **Storage:** a subclass of `StatelessMcp::OAuth::Storage`, storing grants and tokens however the app chooses. See [OAuth storage](oauth-storage.md).
@@ -198,7 +219,7 @@ A Rack or Sinatra app calls the same methods from its routes.
 - **Request checks:** `verified_grant`, the 401's headers and the metadata.
 - **The OAuth server's metadata, and client checks:** fetching each client's metadata document safely, and checking it.
 - **The authorization request:** its checks, the authorization code on approval, and the redirects back to the client.
-- **The OAuth endpoints and their checks:** PKCE, redirect URIs, scopes and expiry. These are still to come.
+- **The token endpoint:** exchanging authorization codes with PKCE, and refreshing tokens. Reusing a refresh token revokes its grant.
 - **The order of storage calls,** so a token can't be used twice, even if a call fails.
 - **`StorageCheck`,** which tests the app's storage class from Minitest or RSpec.
 

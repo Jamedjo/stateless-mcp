@@ -151,7 +151,7 @@ This table gives the usual place for the check in each framework:
 
 ### OAuth
 
-`stateless-mcp-oauth` is in progress and not released yet. It lets people connect AI assistants such as claude.ai to the app by signing in, with no API keys to copy. In Rails, a `before_action` checks each MCP request's access token:
+`stateless-mcp-oauth` isn't released yet. It lets people connect AI assistants such as claude.ai to the app by signing in, with no API keys to copy. In Rails, a `before_action` checks each MCP request's access token:
 
 ```ruby
 # app/controllers/mcp/base_controller.rb
