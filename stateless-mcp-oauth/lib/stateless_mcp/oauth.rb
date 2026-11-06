@@ -11,11 +11,12 @@ require_relative "oauth/document_fetcher"
 require_relative "oauth/document_transport"
 require_relative "oauth/memory_cache"
 require_relative "oauth/protected_resource"
+require_relative "oauth/authorization_server"
 
 module StatelessMcp
-  # An OAuth authorization server for MCP clients. Its state is stored in the
-  # app's tables, through a StatelessMcp::OAuth::Storage subclass the app
-  # writes.
+  # OAuth for MCP clients. It has an authorization server, which signs people
+  # in, and access token checks for each MCP request. Grants and tokens are
+  # stored through a subclass of StatelessMcp::OAuth::Storage.
   module OAuth
   end
 end

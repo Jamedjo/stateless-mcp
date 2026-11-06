@@ -39,6 +39,7 @@ module UsageRecipe
   end
 
   load "mcp_oauth.rb"
+  module_eval(File.read(File.join(__dir__, "recipes/server/mcp_oauth_server.rb")), File.join(__dir__, "recipes/server/mcp_oauth_server.rb"))
   load "base_controller.rb"
 
   class NotesController < Mcp::BaseController
@@ -51,9 +52,12 @@ module UsageRecipe
   module_eval(<<~RUBY, File.join(DIR, "routes.rb"))
     ROUTES.draw do
       #{File.read(File.join(DIR, "routes.rb"))}
+      #{File.read(File.join(__dir__, "recipes/server/routes.rb"))}
       post "/mcp", to: NotesController.action(:show)
     end
   RUBY
+
+  RACK_APP = module_eval("Rack::Builder.new { #{File.read(File.join(__dir__, "recipes/server/config.ru"))}\nrun ->(_env) { [404, {}, []] } }", File.join(__dir__, "recipes/server/config.ru"))
 end
 
 RSpec.describe "The OAuth usage examples" do
@@ -91,6 +95,13 @@ RSpec.describe "The OAuth usage examples" do
       expect(responses.values.uniq).to eq([responses["forged"]]), responses.inspect
     end
 
+    it "serves the OAuth server's metadata at the URL the protected resource metadata lists" do
+      get "/.well-known/oauth-authorization-server"
+
+      expect(last_response.status).to eq(200)
+      expect(JSON.parse(last_response.body)).to include("issuer" => "https://notes.example", "token_endpoint" => "https://notes.example/oauth/token")
+    end
+
     it "serves the metadata the 401 points at" do
       get "/.well-known/oauth-protected-resource/mcp"
 
@@ -105,5 +116,31 @@ RSpec.describe "The OAuth usage examples" do
     end
 
     it_behaves_like "an app checking MCP requests"
+  end
+
+  describe "in Rack, with a map" do
+    def app
+      UsageRecipe::RACK_APP
+    end
+
+    it "serves the OAuth server's metadata" do
+      get "/.well-known/oauth-authorization-server"
+
+      expect(JSON.parse(last_response.body)).to include("issuer" => "https://notes.example")
+    end
+  end
+end
+
+RSpec.describe "The egress proxy example" do
+  it "fetches client metadata documents through the proxy" do
+    server = Module.new
+    server.const_set(:MCP_OAUTH, UsageRecipe::MCP_OAUTH)
+    recipe = File.join(__dir__, "recipes/server/egress_proxy.rb")
+    stub_const("ENV", ENV.to_h.merge("EGRESS_PROXY_URL" => "http://smokescreen.internal:4750"))
+    server.module_eval(File.read(recipe), recipe)
+    allow(Net::HTTP).to receive(:start).and_raise(SocketError, "stopped at the proxy")
+
+    expect { server::MCP_OAUTH_SERVER.client("https://claude.ai/oauth/mcp-oauth-client-metadata") }.to raise_error(StatelessMcp::OAuth::Error)
+    expect(Net::HTTP).to have_received(:start).with("claude.ai", 443, "smokescreen.internal", 4750, nil, nil, hash_including(use_ssl: true))
   end
 end
