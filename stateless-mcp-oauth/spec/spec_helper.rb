@@ -1,5 +1,6 @@
 require "stateless-mcp-oauth"
 require "stateless_mcp/oauth/storage_check/rspec"
+require_relative "support/fake_transport"
 
 RSpec.configure do |config|
   config.disable_monkey_patching!

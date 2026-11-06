@@ -13,3 +13,8 @@ gem "rubocop-rails-omakase", require: false
 # Only for the ActiveRecord paging and OAuth storage recipe specs. No gem depends on these.
 gem "activerecord", require: false
 gem "sqlite3", require: false
+
+# Only for the OAuth gem's specs. Its default client metadata fetcher loads
+# ssrf_filter when it's built, so no gem depends on it.
+gem "ssrf_filter", require: false
+gem "webmock", require: false

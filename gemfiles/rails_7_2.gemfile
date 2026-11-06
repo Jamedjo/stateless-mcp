@@ -9,6 +9,8 @@ gem "rspec", "~> 3.13"
 gem "rubocop-rails-omakase", require: false
 gem "activerecord", "~> 7.2.0", require: false
 gem "sqlite3", require: false
+gem "ssrf_filter", require: false
+gem "webmock", require: false
 gem "actionpack", "~> 7.2.0"
 gem "railties", "~> 7.2.0"
 gem "json", "< 3"
