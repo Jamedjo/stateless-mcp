@@ -5,6 +5,7 @@ Changes to the `stateless-mcp-oauth` gem, released at the same version as [`stat
 ## [Unreleased]
 
 - `StatelessMcp::OAuth::Storage`, the class an app subclasses to keep grants and tokens however it chooses. Tested examples encrypt tokens with Rails' `MessageEncryptor`, or keep them as rows.
+- `StatelessMcp::OAuth::ProtectedResource`, which checks each MCP request's access token and returns its grant. `verified_grant!` raises `InvalidToken` with the reason a token was refused, for the app's logs. A 401 points the client at the server's metadata, which a browser-based client can read from any origin.
 - `StatelessMcp::OAuth::StorageCheck`, in `test_support`, which checks an app's storage class from Minitest or RSpec, including race conditions.
 - Guides to OAuth, to storage, and to moving storage, including from Doorkeeper.
 

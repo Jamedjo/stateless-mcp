@@ -6,6 +6,6 @@ OAuth for [stateless-mcp](https://github.com/Jamedjo/stateless-mcp) servers. Sto
 gem "stateless-mcp-oauth"
 ```
 
-In progress. Only storage exists so far. [How the OAuth gem works](https://github.com/Jamedjo/stateless-mcp/blob/main/docs/oauth.md) covers the sign-in. [OAuth storage](https://github.com/Jamedjo/stateless-mcp/blob/main/docs/oauth-storage.md) covers the storage class, which keeps grants and tokens however the app chooses, with tested examples.
+In progress. Storage and request checks exist so far. The OAuth server's metadata, the consent page helpers and the token endpoint are still to come, so nothing issues tokens yet. [How the OAuth gem works](https://github.com/Jamedjo/stateless-mcp/blob/main/docs/oauth.md) covers the sign-in. [OAuth storage](https://github.com/Jamedjo/stateless-mcp/blob/main/docs/oauth-storage.md) covers the storage class, which keeps grants and tokens however the app chooses, with tested examples.
 
 Licensed under either of Apache-2.0 or MIT, at your option.
