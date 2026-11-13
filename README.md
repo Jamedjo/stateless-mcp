@@ -169,7 +169,7 @@ class Mcp::BaseController < ActionController::API
 end
 ```
 
-[How the OAuth gem works](docs/oauth.md) covers the sign-in. [OAuth storage](docs/oauth-storage.md) covers how grants and tokens are stored.
+[How the OAuth gem works](docs/oauth.md) covers the sign-in, and Rack and Sinatra. [OAuth storage](docs/oauth-storage.md) covers how grants and tokens are stored.
 
 ## The Origin check
 

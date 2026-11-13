@@ -32,6 +32,15 @@ module UsageRecipe
     end
   end
 
+  # Stands in for the Rack guide's example.
+  SERVER = StatelessMcp::Server.new(name: "notes")
+  class NotesMcp
+    def call(env)
+      grant = env[StatelessMcp::OAuth::RequireToken::GRANT] or return [200, {}, ["no MCP here"]]
+      [200, { "content-type" => "text/plain" }, ["user #{grant.user_id}"]]
+    end
+  end
+
   module Mcp; end
 
   def self.load(file)
@@ -58,7 +67,7 @@ module UsageRecipe
     end
   RUBY
 
-  RACK_APP = module_eval("Rack::Builder.new { #{File.read(File.join(__dir__, "recipes/server/config.ru"))}\n#{File.read(File.join(__dir__, "recipes/server/token_config.ru"))}\nrun ->(_env) { [404, {}, []] } }", File.join(__dir__, "recipes/server/config.ru"))
+  RACK_APP = module_eval("Rack::Builder.new { #{File.read(File.join(__dir__, "recipes/server/config.ru"))}\n#{File.read(File.join(__dir__, "recipes/server/token_config.ru"))}\n#{File.read(File.join(DIR, "config.ru"))} }", File.join(__dir__, "recipes/server/config.ru"))
 end
 
 RSpec.describe "The OAuth usage examples" do
@@ -126,9 +135,17 @@ RSpec.describe "The OAuth usage examples" do
     it_behaves_like "an app checking MCP requests"
   end
 
-  describe "in Rack, with a map" do
+  describe "in Rack, with RequireToken" do
     def app
       UsageRecipe::RACK_APP
+    end
+
+    it_behaves_like "an app checking MCP requests"
+
+    it "leaves requests to other paths alone" do
+      get "/health"
+
+      expect(last_response.status).to eq(200)
     end
 
     it "serves the OAuth server's metadata" do

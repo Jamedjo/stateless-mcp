@@ -60,6 +60,24 @@ end
 get MCP_OAUTH.metadata_path, to: MCP_OAUTH.metadata_app
 ```
 
+### Rack and Sinatra
+
+`StatelessMcp::OAuth::RequireToken` goes before `StatelessMcp::Middleware`, with the same server:
+
+```ruby
+# config.ru
+use StatelessMcp::OAuth::RequireToken, protected_resource: MCP_OAUTH, server: SERVER
+use StatelessMcp::Middleware, server: SERVER
+run NotesMcp.new
+```
+
+- **It checks the same requests** that `StatelessMcp::Middleware` handles, using the server's own endpoint check.
+- **A request with a valid token** reaches the app with its grant in `env["stateless_mcp.oauth.grant"]`.
+- **It serves the metadata** at `MCP_OAUTH.metadata_path`.
+- **Other requests pass through.**
+
+A Sinatra app adds the same `use` line above its `use StatelessMcp::Middleware`.
+
 ## The OAuth server
 
 The app makes one `StatelessMcp::OAuth::AuthorizationServer`, for the MCP servers it protects:
@@ -216,7 +234,7 @@ map(MCP_OAUTH_SERVER.token_path) { run MCP_OAUTH_SERVER.token_app }
 
 ## What the gem provides
 
-- **Request checks:** `verified_grant`, the 401's headers and the metadata.
+- **Request checks:** `verified_grant`, the 401's headers, the metadata and `RequireToken`.
 - **The OAuth server's metadata, and client checks:** fetching each client's metadata document safely, and checking it.
 - **The authorization request:** its checks, the authorization code on approval, and the redirects back to the client.
 - **The token endpoint:** exchanging authorization codes with PKCE, and refreshing tokens. Reusing a refresh token revokes its grant.
