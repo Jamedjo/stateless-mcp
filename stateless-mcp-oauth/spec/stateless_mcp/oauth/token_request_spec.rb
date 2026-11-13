@@ -77,14 +77,32 @@ RSpec.describe StatelessMcp::OAuth::TokenRequest do
       expect { exchange("code" => nil) }.to refused("invalid_grant", /code is required/)
     end
 
-    it "refuses an authorization code read by another MCP server's storage" do
-      admin = StatelessMcp::OAuth::ProtectedResource.new(resource: "https://notes.example/admin/mcp", authorization_server: "https://notes.example", storage: MemoryStorage.new)
-      server = StatelessMcp::OAuth::AuthorizationServer.new(issuer: "https://notes.example", protected_resources: [notes, admin], client_metadata_transport: transport)
-      request = { client_id: client_id, redirect_uri: redirect_uri, code_challenge: StatelessMcp::OAuth::Pkce.challenge_for(verifier), scope: "", resource: admin.resource }
-      code = storage.issue_token(StatelessMcp::OAuth::Claims.new(kind: :code, id: SecureRandom.uuid, expires_at: Time.now.to_i + 60, authorization_request: request, approved_by: { user_id: 7 }).to_h)
-      params = { "grant_type" => "authorization_code", "code" => code, "code_verifier" => verifier, "redirect_uri" => redirect_uri, "client_id" => client_id }
+    context "with two MCP servers, each with its own storage" do
+      let(:admin) { StatelessMcp::OAuth::ProtectedResource.new(resource: "https://notes.example/admin/mcp", authorization_server: "https://notes.example", storage: MemoryStorage.new) }
+      let(:two_servers) { StatelessMcp::OAuth::AuthorizationServer.new(issuer: "https://notes.example", protected_resources: [notes, admin], client_metadata_transport: transport) }
 
-      expect { server.token_request(params).tokens }.to refused("invalid_grant", /wasn't issued for the MCP server it names/)
+      # An authorization code in the notes server's storage, naming resource.
+      def code_naming(resource)
+        request = { client_id: client_id, redirect_uri: redirect_uri, code_challenge: StatelessMcp::OAuth::Pkce.challenge_for(verifier), scope: "", resource: resource }
+        storage.issue_token(StatelessMcp::OAuth::Claims.new(kind: :code, id: SecureRandom.uuid, expires_at: Time.now.to_i + 60, authorization_request: request, approved_by: { user_id: 7 }).to_h)
+      end
+
+      def exchange_at(code, resource)
+        two_servers.token_request({ "grant_type" => "authorization_code", "code" => code, "code_verifier" => verifier, "redirect_uri" => redirect_uri, "client_id" => client_id, "resource" => resource }.compact).tokens
+      end
+
+      it "needs the resource parameter" do
+        expect { exchange_at(code_naming(notes.resource), nil) }.to refused("invalid_target", /resource is required/)
+      end
+
+      it "reads the token through the storage of the MCP server the request names" do
+        expect(exchange_at(code_naming(notes.resource), notes.resource)).to include(:access_token)
+        expect { exchange_at(code_naming(notes.resource), admin.resource) }.to refused("invalid_grant", /isn't one this server issued/)
+      end
+
+      it "refuses an authorization code naming another MCP server than the request" do
+        expect { exchange_at(code_naming(admin.resource), notes.resource) }.to refused("invalid_target")
+      end
     end
 
     it "refuses a resource other than the authorization code's" do

@@ -33,20 +33,19 @@ module StatelessMcp
         # Every check comes before create_grant, so someone without the PKCE
         # verifier can't use up another client's authorization code.
         def exchange_code
-          storage, claims = read(@params["code"], :code)
+          claims = read(@params["code"], :code).first
           request = claims.authorization_request
           refuse_grant("The authorization code was issued to another client") unless request[:client_id] == @params["client_id"]
           refuse_grant("redirect_uri doesn't match the authorization request") unless request[:redirect_uri] == @params["redirect_uri"]
           refuse_grant("code_verifier doesn't match the code_challenge") unless Pkce.verified?(@params["code_verifier"], request[:code_challenge])
-          protected_resource = resource_for(request[:resource])
-          refuse_grant("The authorization code wasn't issued for the MCP server it names") unless protected_resource.storage.equal?(storage)
+          same_resource!(request[:resource])
           approved = { client_id: request[:client_id], resource: protected_resource.resource, scope: request[:scope] }
           grant_id = storage.create_grant(code_id: claims.id, authorization_request: approved, approved_by: claims.approved_by)
           unless grant_id
             storage.revoke_grant_for_code(claims.id)
             refuse_grant("The authorization code has already been used")
           end
-          response(storage, grant_id, request[:scope])
+          response(grant_id, request[:scope])
         end
 
         # Each refresh token can be used once. If a used refresh token is sent
@@ -54,42 +53,54 @@ module StatelessMcp
         # The used refresh token is consumed before new tokens are issued, so a
         # failure in between never leaves two working refresh tokens.
         def refresh
-          storage, claims, raw = read(@params["refresh_token"], :refresh)
+          claims, raw = read(@params["refresh_token"], :refresh)
           grant = storage.find_grant(claims.grant_id) or refuse_grant("The refresh token's grant has been revoked")
           refuse_grant("The refresh token was issued to another client") unless grant.client_id == @params["client_id"]
-          resource_for(grant.resource)
+          same_resource!(grant.resource)
           raise Error.new("invalid_scope", "A refresh can't change the scope") unless @params["scope"].nil? || @params["scope"].split.sort == grant.scope.to_s.split.sort
           unless storage.consume_refresh_token(raw) == true
             storage.revoke_grant(claims.grant_id)
             refuse_grant("The refresh token has already been used")
           end
-          response(storage, claims.grant_id, grant.scope)
+          response(claims.grant_id, grant.scope)
         end
 
-        # Returns the storage that issued a token, the token's claims, and the
-        # hash from read_token, including any keys the storage added. Each
-        # protected resource's storage is tried in turn.
+        # The MCP server the request is for, named by its resource parameter
+        # (RFC 8707), which the MCP spec has clients send with every token
+        # request. A client may leave it out only when the OAuth server protects
+        # a single MCP server. Its storage issued the tokens being exchanged.
+        def protected_resource
+          @protected_resource ||= if @params.key?("resource")
+            @authorization_server.protected_resource(@params["resource"]) or raise Error.new("invalid_target", "resource must be one of: #{@authorization_server.protected_resources.map(&:resource).join(" ")}")
+          elsif @authorization_server.protected_resources.one?
+            @authorization_server.protected_resources.first
+          else
+            raise Error.new("invalid_target", "resource is required, as this OAuth server protects several MCP servers")
+          end
+        end
+
+        def storage
+          protected_resource.storage
+        end
+
+        # Returns a token's claims, and the hash from read_token, including any
+        # keys the storage added.
         def read(token, kind)
           refuse_grant("#{kind == :code ? "code" : "refresh_token"} is required") if token.to_s.empty?
-          @authorization_server.protected_resources.map(&:storage).uniq.each do |storage|
-            raw = Claims.symbolize(storage.read_token(token)) or next
-            claims = Claims.from_h(raw) or next
-            next unless claims.kind == kind
-            refuse_grant("The #{kind == :code ? "authorization code" : "refresh token"} has expired") if claims.expired?
-            return [storage, claims, raw]
-          end
-          refuse_grant("The #{kind == :code ? "authorization code" : "refresh token"} isn't one this server issued")
+          raw = Claims.symbolize(storage.read_token(token))
+          claims = Claims.from_h(raw) if raw
+          refuse_grant("The #{kind == :code ? "authorization code" : "refresh token"} isn't one this server issued") unless claims&.kind == kind
+          refuse_grant("The #{kind == :code ? "authorization code" : "refresh token"} has expired") if claims.expired?
+          [claims, raw]
         end
 
-        # The protected resource a grant is for. If the request has a resource
-        # parameter, it must name the same protected resource.
-        def resource_for(resource)
-          protected_resource = @authorization_server.protected_resource(resource) or refuse_grant("The grant is for an MCP server this OAuth server doesn't protect")
-          raise Error.new("invalid_target", "resource must be #{protected_resource.resource}") unless @params["resource"].nil? || @authorization_server.protected_resource(@params["resource"]).equal?(protected_resource)
-          protected_resource
+        # The authorization code or grant must be for the MCP server the request
+        # names.
+        def same_resource!(resource)
+          raise Error.new("invalid_target", "resource must be #{resource}") unless @authorization_server.protected_resource(resource).equal?(protected_resource)
         end
 
-        def response(storage, grant_id, scope)
+        def response(grant_id, scope)
           now = Time.now.to_i
           access = Claims.new(kind: :access, id: SecureRandom.uuid, grant_id: grant_id, expires_at: now + @authorization_server.access_token_ttl)
           refresh = Claims.new(kind: :refresh, id: SecureRandom.uuid, grant_id: grant_id, expires_at: now + @authorization_server.refresh_token_ttl)

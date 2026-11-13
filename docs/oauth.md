@@ -223,6 +223,7 @@ map(MCP_OAUTH_SERVER.token_path) { run MCP_OAUTH_SERVER.token_app }
 
 - **Exchanging an authorization code** needs the PKCE code verifier, client ID and redirect URI from its authorization request. The storage's `create_grant` is called only after those checks pass, so someone without the code verifier can't use up another client's authorization code.
 - **Refreshing** consumes the used refresh token before issuing new ones. If a client sends a refresh token that was already used, the token must have been copied, and the grant is revoked.
+- **The `resource` parameter picks the MCP server,** and so the storage that reads the token. MCP clients send it with every token request. A client may leave it out only when the OAuth server protects one MCP server. So each MCP server can have its own storage, such as an admin server keeping its grants in separate tables.
 - **Tokens last** two minutes for an authorization code, an hour for an access token and 30 days for a refresh token. Pass `code_ttl:`, `access_token_ttl:` or `refresh_token_ttl:` to change them.
 - **Clients are public,** with no secret. A request with a secret or an `Authorization` header gets a 401.
 
