@@ -14,6 +14,10 @@ module StatelessMcp
     # allow_unauthenticated, as the tools would be open to anyone.
     AuthenticationNotConfigured = Class.new(Server::Invalid)
 
+    # Raised by mcp_grant when protected_resource is set but no grant reached
+    # the controller, so the token check is missing from the middleware stack.
+    MissingGrant = Class.new(StandardError)
+
     DEFAULT_PARENT_CONTROLLER = "ActionController::API"
 
     class << self
@@ -28,20 +32,47 @@ module StatelessMcp
       # The default server, from the settings in config.stateless_mcp.
       def build_default_server(settings, default_name:)
         check_authentication(settings)
-        server_settings = settings.except(:parent_controller, :allow_unauthenticated)
+        server_settings = settings.except(:parent_controller, :allow_unauthenticated, :protected_resource)
         server_settings[:name] ||= default_name
         Server.new(**server_settings)
       end
 
+      # The ProtectedResource from config.stateless_mcp.protected_resource,
+      # calling it if it's a lambda, or nil when it isn't set.
+      def protected_resource
+        resource = ::Rails.application&.config&.stateless_mcp&.protected_resource
+        resource.respond_to?(:call) ? resource.call : resource
+      end
+
+      # Puts a server's middleware on a middleware stack. With a protected
+      # resource from stateless-mcp-oauth, StatelessMcp::OAuth::RequireToken
+      # goes first, so a request without a valid access token gets the 401
+      # that says where to sign in before the protocol checks can refuse it.
+      # The protected resource can be a lambda, called for each request, so an
+      # app can build it after boot.
+      def use_middleware(stack, server, protected_resource: nil)
+        stack.use(oauth_require_token, protected_resource: protected_resource, server: server) if protected_resource
+        stack.use(Middleware, server: server)
+      end
+
       private
 
+      def oauth_require_token
+        require "stateless_mcp/oauth"
+        OAuth::RequireToken
+      rescue LoadError
+        raise ArgumentError, "config.stateless_mcp.protected_resource needs the stateless-mcp-oauth gem. Add gem \"stateless-mcp-oauth\" to the Gemfile"
+      end
+
       # A parent controller of the app's own is trusted to authenticate. The
-      # gem can't tell whether it does, only that the app has chosen one.
+      # gem can't tell whether it does, only that the app has chosen one. A
+      # protected resource authenticates every request in the middleware.
       def check_authentication(settings)
-        return if settings[:allow_unauthenticated] == true
+        return if settings[:allow_unauthenticated] == true || settings[:protected_resource]
         return if settings.fetch(:parent_controller, DEFAULT_PARENT_CONTROLLER).to_s != DEFAULT_PARENT_CONTROLLER
         raise AuthenticationNotConfigured, "config.stateless_mcp.parent_controller is #{DEFAULT_PARENT_CONTROLLER}, so anyone who can reach the MCP endpoint can call every tool. " \
-          "Set config.stateless_mcp.parent_controller to a controller that authenticates, such as \"Mcp::BaseController\", " \
+          "Set config.stateless_mcp.protected_resource to the server's StatelessMcp::OAuth::ProtectedResource, " \
+          "or config.stateless_mcp.parent_controller to a controller that authenticates, such as \"Mcp::BaseController\", " \
           "or set config.stateless_mcp.allow_unauthenticated = true for a server that is open on purpose."
       end
     end

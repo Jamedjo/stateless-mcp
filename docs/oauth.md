@@ -14,11 +14,11 @@ MCP clients, such as Claude, sign people in with OAuth. `stateless-mcp-oauth` wi
 
 ## Checking MCP requests
 
-The app makes one `StatelessMcp::OAuth::ProtectedResource`. OAuth calls a server whose requests need a token a *protected resource*, and here that's the MCP server:
+The MCP server is a `StatelessMcp::OAuth::ProtectedResource`. OAuth calls a server whose requests need a token a *protected resource*. In Rails, one setting makes the MCP server one:
 
 ```ruby
 # config/initializers/mcp_oauth.rb
-MCP_OAUTH = StatelessMcp::OAuth::ProtectedResource.new(
+Rails.application.config.stateless_mcp.protected_resource = StatelessMcp::OAuth::ProtectedResource.new(
   resource: "https://notes.example/mcp",
   authorization_server: "https://notes.example",
   storage: McpOAuthStorage.new
@@ -29,66 +29,63 @@ MCP_OAUTH = StatelessMcp::OAuth::ProtectedResource.new(
 - **`authorization_server`** is the URL of the app's OAuth server, where clients sign people in.
 - **`storage`** is the app's [storage class](oauth-storage.md).
 
-`MCP_OAUTH.verified_grant(request)` returns the grant behind a request's access token, from the storage's `find_grant`. It returns `nil` when there's no token, or when the token is unknown, revoked, expired, not an access token, or for another MCP server. The grant says who approved, with whatever attributes the app chose, such as `user_id`.
+Every request to the MCP server then needs a valid access token:
 
-A request without a valid token gets a 401. Its `WWW-Authenticate` header, from `MCP_OAUTH.unauthorized_headers`, points the client at the server's metadata. The metadata names the OAuth server, where the client then signs the person in.
+- **The token is checked before the MCP protocol is.** A request without a valid one gets a 401 whatever else is wrong with it, such as an older protocol version. Its `WWW-Authenticate` header points the client at the server's metadata, which names the OAuth server, where the client signs the person in. GET and DELETE still get a 405.
+- **The metadata is served** at `/.well-known/oauth-protected-resource/mcp`, as RFC 9728 places it, and any origin can read it. It needs no route.
+- **The token's grant** says who approved, with whatever attributes the app chose, such as `user_id`. It's `nil` when the token is unknown, revoked, expired, not an access token, or for another MCP server, and then the request gets the 401. No client can see why.
+- **`parent_controller` doesn't need to authenticate** with this setting.
+- **An app that builds its protected resource after boot,** so that it picks up reloaded classes, sets a lambda instead, such as `-> { McpOauth.resource }`.
 
 ### Rails
 
-A `before_action` in the tools' base controller checks each request:
+Controllers read the grant from `mcp_grant`:
 
 ```ruby
 # app/controllers/mcp/base_controller.rb
 class Mcp::BaseController < ActionController::API
   include StatelessMcp::Rails::Controller
 
-  before_action :require_mcp_token
-
-  private
-    # The grant says who approved, such as @mcp_grant.user_id.
-    def require_mcp_token
-      @mcp_grant = MCP_OAUTH.verified_grant(request)
-      head :unauthorized, MCP_OAUTH.unauthorized_headers(invalid_token: request.authorization.present?) unless @mcp_grant
-    end
+  # Every request here has a valid access token. mcp_grant says who approved,
+  # such as mcp_grant.user_id.
 end
 ```
 
-**The protected resource metadata** (RFC 9728) is how a client finds where to sign in. It names the app's OAuth server, the scopes, and how to send a token. A client reads it from a well-known URL after its first 401, so it needs a route:
-
-```ruby
-# config/routes.rb, inside Rails.application.routes.draw
-get MCP_OAUTH.metadata_path, to: MCP_OAUTH.metadata_app
-```
+`mcp_grant` raises rather than return `nil` if the setting is on but no grant reached the controller, which can only mean the token check is missing from the middleware stack.
 
 ### Rack and Sinatra
 
-`StatelessMcp::OAuth::RequireToken` goes before `StatelessMcp::Middleware`, with the same server:
+A Rack or Sinatra app makes the protected resource itself, and puts `StatelessMcp::OAuth::RequireToken` before `StatelessMcp::Middleware`, with the same server:
 
 ```ruby
 # config.ru
+MCP_OAUTH = StatelessMcp::OAuth::ProtectedResource.new(
+  resource: "https://notes.example/mcp",
+  authorization_server: "https://notes.example",
+  storage: McpOAuthStorage.new
+)
 use StatelessMcp::OAuth::RequireToken, protected_resource: MCP_OAUTH, server: SERVER
 use StatelessMcp::Middleware, server: SERVER
 run NotesMcp.new
 ```
 
-- **It checks the same requests** that `StatelessMcp::Middleware` handles, using the server's own endpoint check.
+- **It checks the same requests** that `StatelessMcp::Middleware` handles, using the server's own endpoint check, before the protocol checks. GET and DELETE pass through to the middleware's 405.
 - **A request with a valid token** reaches the app with its grant in `env["stateless_mcp.oauth.grant"]`.
 - **It serves the metadata** at `MCP_OAUTH.metadata_path`.
 - **Other requests pass through.**
 
-A Sinatra app adds the same `use` line above its `use StatelessMcp::Middleware`.
+A Sinatra app adds the same `use` line above its `use StatelessMcp::Middleware`. Its OAuth server passes `protected_resources: [MCP_OAUTH]`, below.
 
 ## The OAuth server
 
-The app makes one `StatelessMcp::OAuth::AuthorizationServer`, for the MCP servers it protects:
+The app makes one `StatelessMcp::OAuth::AuthorizationServer`:
 
 ```ruby
-# config/initializers/mcp_oauth.rb, after MCP_OAUTH
-MCP_OAUTH_SERVER = StatelessMcp::OAuth::AuthorizationServer.new(
-  issuer: "https://notes.example",
-  protected_resources: [MCP_OAUTH]
-)
+# config/initializers/mcp_oauth.rb, after the protected resource
+MCP_OAUTH_SERVER = StatelessMcp::OAuth::AuthorizationServer.new(issuer: "https://notes.example")
 ```
+
+In Rails, it issues tokens for the protected resource in `config.stateless_mcp`. A Rack or Sinatra app, or one with several MCP servers, lists them: `protected_resources: [MCP_OAUTH]`.
 
 The OAuth server's metadata (RFC 8414) lists where clients sign people in and where they get tokens. In Rails, it's served from a route:
 
@@ -118,7 +115,6 @@ MCP clients don't register with the OAuth server. Instead, a client's client ID 
 # config/initializers/mcp_oauth.rb, in place of the MCP_OAUTH_SERVER above
 MCP_OAUTH_SERVER = StatelessMcp::OAuth::AuthorizationServer.new(
   issuer: "https://notes.example",
-  protected_resources: [MCP_OAUTH],
   client_metadata_transport: StatelessMcp::OAuth::DocumentTransport.new(proxy: ENV.fetch("EGRESS_PROXY_URL"))
 )
 ```

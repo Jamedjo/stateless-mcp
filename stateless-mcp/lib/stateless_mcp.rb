@@ -19,6 +19,11 @@ module StatelessMcp
   # The parsed JSON-RPC body, which the middleware leaves in the Rack env.
   REQUEST_ENV_KEY = "stateless_mcp.request"
 
+  # The grant behind a request's access token, which stateless-mcp-oauth's
+  # RequireToken leaves in the Rack env. A client can't set it: Rack names every
+  # request header's key with an HTTP_ prefix.
+  GRANT_ENV_KEY = "stateless_mcp.oauth.grant"
+
   # Methods whose target is mirrored into the Mcp-Name header.
   NAME_BEARING_METHODS = MCP::Server::Transports::StreamableHTTPTransport::NAME_BEARING_METHODS
 

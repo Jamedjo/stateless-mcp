@@ -4,6 +4,8 @@ Changes to the `stateless-mcp-rails` gem. It's released at the same version as `
 
 ## [Unreleased]
 
+- `config.stateless_mcp.protected_resource`: with stateless-mcp-oauth, every MCP request needs an access token, checked before the protocol checks so a client always learns where to sign in. Controllers read the token's grant from `mcp_grant`, which raises if the setting is on but the token check is missing. The metadata needs no route.
+
 ## [0.0.1] - 2026-10-19
 
 First release: MCP servers declared in Rails routes, with tools as controller actions.

@@ -55,10 +55,11 @@ The gem builds a default server from `config.stateless_mcp`, and adds its middle
 | `page_size`, `max_page_size` | 20, 100 | Default and largest page size for paginated tools |
 | `check_origin`, `allowed_origins` | `true`, none | The [Origin check](../README.md#the-origin-check) |
 | `tool_verbs` | `index: "list", show: "get", …` | How `mcp_resource` names a resource's tools |
-| `parent_controller` | `"ActionController::API"` | The parent class of the gem's server controller. The app doesn't boot until this is set to the app's own base controller, or `allow_unauthenticated` is `true` |
+| `parent_controller` | `"ActionController::API"` | The parent class of the gem's server controller. The app doesn't boot until this is set to the app's own base controller, `protected_resource` is set, or `allow_unauthenticated` is `true` |
+| `protected_resource` | none | With stateless-mcp-oauth, a `ProtectedResource`, or a lambda returning one. Every request then needs an access token, checked before the protocol, and controllers read its grant from `mcp_grant`. See [OAuth](oauth.md#rails) |
 | `allow_unauthenticated` | `false` | `true` boots the app with the default `parent_controller`, for a server that is open on purpose |
 
-All but `parent_controller` and `allow_unauthenticated` are [server settings](rack.md#server-settings). An invalid setting stops the app from booting, with an error that names the setting.
+All but `parent_controller`, `protected_resource` and `allow_unauthenticated` are [server settings](rack.md#server-settings). An invalid setting stops the app from booting, with an error that names the setting.
 
 ## Routes
 

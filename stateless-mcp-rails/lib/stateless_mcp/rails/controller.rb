@@ -45,6 +45,24 @@ module StatelessMcp
         request.get_header(Server::ENV_KEY) or raise "No StatelessMcp::Middleware serves #{request.path}; is the server's middleware in the app's stack?"
       end
 
+      # The grant behind the request's access token, which
+      # StatelessMcp::OAuth::RequireToken checked, such as mcp_grant.user_id.
+      # nil when config.stateless_mcp.protected_resource isn't set, and for a
+      # request that isn't an MCP request, such as another route to the same
+      # controller. With the setting, an MCP request without a grant can only
+      # mean RequireToken isn't in the stack, so it raises rather than let a
+      # tool run for nobody.
+      def mcp_grant
+        grant = request.get_header(GRANT_ENV_KEY)
+        raise MissingGrant, "config.stateless_mcp.protected_resource is set, but no grant reached #{request.path}; is StatelessMcp::OAuth::RequireToken in the middleware stack?" if grant.nil? && mcp_post? && StatelessMcp::Rails.protected_resource
+        grant
+      end
+
+      # A POST that StatelessMcp::Middleware handled, so one RequireToken checks.
+      def mcp_post?
+        request.post? && request.get_header(Server::ENV_KEY).present?
+      end
+
       # The parsed JSON-RPC body.
       def mcp_request
         request.get_header(REQUEST_ENV_KEY) || {}

@@ -1,6 +1,7 @@
 require "action_controller"
 require "action_view"
 require "rack/test"
+require_relative "support/rails_app"
 
 # Runs the consent page example from docs/oauth.md in Rails, as an app would,
 # with a signed-in person.

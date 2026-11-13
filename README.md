@@ -151,22 +151,15 @@ This table gives the usual place for the check in each framework:
 
 ### OAuth
 
-`stateless-mcp-oauth` isn't released yet. It lets people connect AI assistants such as claude.ai to the app by signing in, with no API keys to copy. In Rails, a `before_action` checks each MCP request's access token:
+`stateless-mcp-oauth` isn't released yet. It lets people connect AI assistants such as claude.ai to the app by signing in, with no API keys to copy. In Rails, one setting checks each MCP request's access token, and controllers read who approved from `mcp_grant`:
 
 ```ruby
-# app/controllers/mcp/base_controller.rb
-class Mcp::BaseController < ActionController::API
-  include StatelessMcp::Rails::Controller
-
-  before_action :require_mcp_token
-
-  private
-    # The grant says who approved, such as @mcp_grant.user_id.
-    def require_mcp_token
-      @mcp_grant = MCP_OAUTH.verified_grant(request)
-      head :unauthorized, MCP_OAUTH.unauthorized_headers(invalid_token: request.authorization.present?) unless @mcp_grant
-    end
-end
+# config/initializers/mcp_oauth.rb
+Rails.application.config.stateless_mcp.protected_resource = StatelessMcp::OAuth::ProtectedResource.new(
+  resource: "https://notes.example/mcp",
+  authorization_server: "https://notes.example",
+  storage: McpOAuthStorage.new
+)
 ```
 
 [How the OAuth gem works](docs/oauth.md) covers the sign-in, and Rack and Sinatra. [OAuth storage](docs/oauth-storage.md) covers how grants and tokens are stored.

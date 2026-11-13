@@ -25,6 +25,10 @@ RSpec.describe StatelessMcp::Rails do
       end
     end
 
+    it "builds the server when protected_resource is set, since every request then needs an access token" do
+      expect(described_class.build_default_server({ protected_resource: -> { nil } }, default_name: "notes")).to have_attributes(name: "notes")
+    end
+
     it "builds an open server when allow_unauthenticated is true" do
       expect(described_class.build_default_server({ parent_controller: "ActionController::API", allow_unauthenticated: true }, default_name: "notes")).to have_attributes(name: "notes")
     end
@@ -32,5 +36,46 @@ RSpec.describe StatelessMcp::Rails do
 
   it "puts the default server's middleware on the app's stack" do
     expect(Rails.application.middleware.middlewares.map(&:klass).count(StatelessMcp::Middleware)).to eq(2)
+  end
+
+  describe ".use_middleware" do
+    let(:server) { StatelessMcp::Server.new(name: "notes") }
+
+    it "puts the token check before the MCP middleware when there's a protected resource" do
+      stack = ActionDispatch::MiddlewareStack.new
+      described_class.use_middleware(stack, server, protected_resource: -> { nil })
+
+      expect(stack.middlewares.map(&:klass)).to eq([StatelessMcp::OAuth::RequireToken, StatelessMcp::Middleware])
+    end
+
+    it "gives controllers the grant the token check found, as mcp_grant" do
+      controller = Class.new(ActionController::API) { include StatelessMcp::Rails::Controller; public :mcp_grant }.new
+      controller.request = ActionDispatch::Request.new(Rack::MockRequest.env_for("/mcp", "stateless_mcp.oauth.grant" => :the_grant))
+
+      expect(controller.mcp_grant).to eq(:the_grant)
+    end
+
+    it "raises from mcp_grant when the setting is on but no grant arrived, as the token check must be missing" do
+      controller = Class.new(ActionController::API) { include StatelessMcp::Rails::Controller; public :mcp_grant }.new
+      controller.request = ActionDispatch::Request.new(Rack::MockRequest.env_for("/mcp", method: "POST", StatelessMcp::Server::ENV_KEY => server))
+      allow(described_class).to receive(:protected_resource).and_return(Object.new)
+
+      expect { controller.mcp_grant }.to raise_error(described_class::MissingGrant, /RequireToken/)
+    end
+
+    it "gives nil from mcp_grant on another route to the same controller, which the token check doesn't cover" do
+      controller = Class.new(ActionController::API) { include StatelessMcp::Rails::Controller; public :mcp_grant }.new
+      controller.request = ActionDispatch::Request.new(Rack::MockRequest.env_for("/api/notes", method: "POST"))
+      allow(described_class).to receive(:protected_resource).and_return(Object.new)
+
+      expect(controller.mcp_grant).to be_nil
+    end
+
+    it "adds only the MCP middleware without one" do
+      stack = ActionDispatch::MiddlewareStack.new
+      described_class.use_middleware(stack, server)
+
+      expect(stack.middlewares.map(&:klass)).to eq([StatelessMcp::Middleware])
+    end
   end
 end

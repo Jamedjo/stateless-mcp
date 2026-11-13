@@ -12,6 +12,10 @@ module StatelessMcp
       # the app doesn't boot unless allow_unauthenticated is true.
       config.stateless_mcp.parent_controller = DEFAULT_PARENT_CONTROLLER
       config.stateless_mcp.allow_unauthenticated = false
+      # A StatelessMcp::OAuth::ProtectedResource, or a lambda returning one.
+      # When set, every request needs an access token, checked before the
+      # protocol checks. See StatelessMcp::Rails.use_middleware.
+      config.stateless_mcp.protected_resource = nil
 
       rake_tasks do
         namespace :mcp do
@@ -29,7 +33,7 @@ module StatelessMcp
       # After the app's own initializers, which may set config.stateless_mcp.
       initializer "stateless_mcp.default_server", after: :load_config_initializers do |app|
         StatelessMcp::Rails.default_server = StatelessMcp::Rails.build_default_server(app.config.stateless_mcp.to_h, default_name: app.class.module_parent_name.underscore)
-        app.config.middleware.use Middleware, server: StatelessMcp::Rails.default_server
+        StatelessMcp::Rails.use_middleware(app.config.middleware, StatelessMcp::Rails.default_server, protected_resource: app.config.stateless_mcp.protected_resource)
       end
     end
   end

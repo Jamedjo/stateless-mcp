@@ -5,10 +5,10 @@ module StatelessMcp
     # The app's OAuth server. It signs people in for MCP clients and issues the
     # clients' tokens. The app creates one, listing the MCP servers it protects:
     #
-    #   MCP_OAUTH_SERVER = StatelessMcp::OAuth::AuthorizationServer.new(
-    #     issuer: "https://notes.example",
-    #     protected_resources: [MCP_OAUTH]
-    #   )
+    #   MCP_OAUTH_SERVER = StatelessMcp::OAuth::AuthorizationServer.new(issuer: "https://notes.example")
+    #
+    # In Rails, it protects config.stateless_mcp.protected_resource. A Rack or
+    # Sinatra app passes protected_resources: [MCP_OAUTH].
     #
     # MCP clients don't register. A client's client_id is the URL of its client
     # metadata document. The server fetches and checks that document.
@@ -21,7 +21,7 @@ module StatelessMcp
       # issuer is the server's origin, such as "https://notes.example".
       # protected_resources are the StatelessMcp::OAuth::ProtectedResource
       # objects it issues tokens for. Each one's authorization_server must equal
-      # issuer.
+      # issuer. In Rails, it defaults to config.stateless_mcp.protected_resource.
       #
       # code_ttl, access_token_ttl and refresh_token_ttl are how many seconds an
       # authorization code, an access token and a refresh token last. The
@@ -37,10 +37,10 @@ module StatelessMcp
       #
       # localhost_redirects: false accepts only 127.0.0.1 and [::1] as loopback
       # redirect URIs. See ClientMetadata.fetch.
-      def initialize(issuer:, protected_resources:, authorization_path: "/oauth/authorize", token_path: "/oauth/token", code_ttl: 120, access_token_ttl: 3600, refresh_token_ttl: 30 * 86_400, client_metadata_transport: nil, client_metadata_cache: nil, localhost_redirects: true)
+      def initialize(issuer:, protected_resources: nil, authorization_path: "/oauth/authorize", token_path: "/oauth/token", code_ttl: 120, access_token_ttl: 3600, refresh_token_ttl: 30 * 86_400, client_metadata_transport: nil, client_metadata_cache: nil, localhost_redirects: true)
         @issuer = origin(issuer)
-        @protected_resources = Array(protected_resources).freeze
-        raise ArgumentError, "protected_resources must list at least one StatelessMcp::OAuth::ProtectedResource" if @protected_resources.empty?
+        @protected_resources = Array(protected_resources || rails_protected_resource).freeze
+        raise ArgumentError, "protected_resources must list at least one StatelessMcp::OAuth::ProtectedResource, unless Rails' config.stateless_mcp.protected_resource is set" if @protected_resources.empty?
         @protected_resources.each do |protected_resource|
           raise ArgumentError, "#{protected_resource.resource} names #{protected_resource.authorization_server} as its authorization server, not #{@issuer}" unless protected_resource.authorization_server == @issuer
         end
@@ -134,6 +134,11 @@ module StatelessMcp
       end
 
       private
+        # In Rails, the MCP server's protected resource from config.stateless_mcp.
+        def rails_protected_resource
+          StatelessMcp::Rails.protected_resource if defined?(StatelessMcp::Rails.protected_resource)
+        end
+
         def origin(url)
           uri = URI(url.to_s)
           local = uri.scheme == "http" && %w[localhost 127.0.0.1].include?(uri.host)

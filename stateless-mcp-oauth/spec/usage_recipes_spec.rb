@@ -1,5 +1,4 @@
-require "action_controller"
-require "stateless_mcp/rails/controller"
+require_relative "support/rails_app"
 require "rack/test"
 require_relative "../../stateless-mcp/spec/support/mcp_requests"
 
@@ -50,22 +49,25 @@ module UsageRecipe
   load "mcp_oauth.rb"
   module_eval(File.read(File.join(__dir__, "recipes/server/mcp_oauth_server.rb")), File.join(__dir__, "recipes/server/mcp_oauth_server.rb"))
   load "base_controller.rb"
+  PROTECTED_RESOURCE = Rails.application.config.stateless_mcp.protected_resource
 
   class NotesController < Mcp::BaseController
     def show
-      render plain: "user #{@mcp_grant.user_id}"
+      render plain: "user #{mcp_grant.user_id}"
     end
   end
 
   ROUTES = ActionDispatch::Routing::RouteSet.new
-  module_eval(<<~RUBY, File.join(DIR, "routes.rb"))
+  module_eval(<<~RUBY, File.join(__dir__, "recipes/server/routes.rb"))
     ROUTES.draw do
-      #{File.read(File.join(DIR, "routes.rb"))}
       #{File.read(File.join(__dir__, "recipes/server/routes.rb"))}
       #{File.read(File.join(__dir__, "recipes/server/token_routes.rb"))}
       post "/mcp", to: NotesController.action(:show)
     end
   RUBY
+
+  # The middleware the stateless-mcp-rails engine adds with the setting.
+  RAILS_APP = ActionDispatch::MiddlewareStack.new.tap { |stack| StatelessMcp::Rails.use_middleware(stack, SERVER, protected_resource: PROTECTED_RESOURCE) }.build(ROUTES)
 
   RACK_APP = module_eval("Rack::Builder.new { #{File.read(File.join(__dir__, "recipes/server/config.ru"))}\n#{File.read(File.join(__dir__, "recipes/server/token_config.ru"))}\n#{File.read(File.join(DIR, "config.ru"))} }", File.join(__dir__, "recipes/server/config.ru"))
 end
@@ -87,6 +89,25 @@ RSpec.describe "The OAuth usage examples" do
 
       expect(last_response.status).to eq(401)
       expect(last_response.headers["www-authenticate"]).to eq('Bearer resource_metadata="https://notes.example/.well-known/oauth-protected-resource/mcp"')
+    end
+
+    it "answers the 401 before the protocol checks, so an older client still learns where to sign in" do
+      post "/mcp", JSON.generate(jsonrpc: "2.0", id: 1, method: "initialize", params: {}), "CONTENT_TYPE" => "application/json", "HTTP_MCP_PROTOCOL_VERSION" => "2025-06-18"
+
+      expect(last_response.status).to eq(401)
+      expect(last_response.headers["www-authenticate"]).to start_with("Bearer resource_metadata=")
+    end
+
+    it "can't be given a grant by a request header named like the env key" do
+      post_mcp "/mcp", "tools/list", headers: { "stateless_mcp.oauth.grant" => "good", "HTTP_STATELESS_MCP.OAUTH.GRANT" => "good" }
+
+      expect(last_response.status).to eq(401)
+    end
+
+    it "leaves GET to the MCP middleware's 405" do
+      get "/mcp"
+
+      expect(last_response.status).to eq(405)
     end
 
     it "says the token was refused when one was sent" do
@@ -127,9 +148,9 @@ RSpec.describe "The OAuth usage examples" do
     end
   end
 
-  describe "in Rails, with a before_action" do
+  describe "in Rails, with config.stateless_mcp.protected_resource" do
     def app
-      UsageRecipe::ROUTES
+      UsageRecipe::RAILS_APP
     end
 
     it_behaves_like "an app checking MCP requests"
@@ -159,7 +180,6 @@ end
 RSpec.describe "The egress proxy example" do
   it "fetches client metadata documents through the proxy" do
     server = Module.new
-    server.const_set(:MCP_OAUTH, UsageRecipe::MCP_OAUTH)
     recipe = File.join(__dir__, "recipes/server/egress_proxy.rb")
     stub_const("ENV", ENV.to_h.merge("EGRESS_PROXY_URL" => "http://smokescreen.internal:4750"))
     server.module_eval(File.read(recipe), recipe)
