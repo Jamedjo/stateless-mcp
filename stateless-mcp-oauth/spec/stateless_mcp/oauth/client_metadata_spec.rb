@@ -45,6 +45,15 @@ RSpec.describe StatelessMcp::OAuth::ClientMetadata do
     end
   end
 
+  context "with ChatGPT's document, which prefers private_key_jwt but supports none" do
+    let(:client_id) { "https://chatgpt.com/oauth/client.json" }
+    let(:document) { { client_id: client_id, client_name: "ChatGPT", redirect_uris: ["https://chatgpt.com/connector_platform_oauth_redirect"], grant_types: ["authorization_code", "refresh_token", "urn:ietf:params:oauth:grant-type:jwt-bearer"], response_types: ["code"], token_endpoint_auth_method: "private_key_jwt", token_endpoint_auth_methods_supported: ["none", "private_key_jwt"] } }
+
+    it "accepts it as a public client" do
+      expect(parse.redirect_uri?("https://chatgpt.com/connector_platform_oauth_redirect")).to be(true)
+    end
+  end
+
   it "uses client_name as the name, with whitespace collapsed and truncated to 80 characters" do
     expect(parse(client_name: "  Claude\n\t Desktop ").name).to eq("Claude Desktop")
     expect(parse(client_name: "x" * 200).name.length).to eq(80)
@@ -66,6 +75,9 @@ RSpec.describe StatelessMcp::OAuth::ClientMetadata do
   it "refuses confidential clients, and clients without the code flow" do
     expect { parse(client_secret: "s") }.to raise_error(StatelessMcp::OAuth::Error, /public clients/)
     expect { parse(token_endpoint_auth_method: "private_key_jwt") }.to raise_error(StatelessMcp::OAuth::Error, /public clients/)
+    expect { parse(token_endpoint_auth_methods_supported: ["none", "client_secret_basic"]) }.to raise_error(StatelessMcp::OAuth::Error, /public clients/)
+    expect { parse(token_endpoint_auth_methods_supported: ["private_key_jwt"]) }.to raise_error(StatelessMcp::OAuth::Error, /public clients/)
+    expect { parse(token_endpoint_auth_method: "client_secret_basic", token_endpoint_auth_methods_supported: ["none"]) }.to raise_error(StatelessMcp::OAuth::Error, /public clients/)
     expect { parse(grant_types: ["client_credentials"]) }.to raise_error(StatelessMcp::OAuth::Error, /authorization code flow/)
     expect { parse(response_types: ["token"]) }.to raise_error(StatelessMcp::OAuth::Error, /authorization code flow/)
   end

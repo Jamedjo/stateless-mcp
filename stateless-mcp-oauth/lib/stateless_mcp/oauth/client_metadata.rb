@@ -10,6 +10,7 @@ module StatelessMcp
     class ClientMetadata
       LOOPBACK_IPS = ["127.0.0.1", "[::1]"].freeze
       LOOPBACK_HOSTS = (LOOPBACK_IPS + ["localhost"]).freeze
+      SHARED_SECRET_METHODS = %w[client_secret_basic client_secret_post client_secret_jwt].freeze
       MAX_NAME_LENGTH = 80
       DEFAULT_TTL = 300
       TTL_RANGE = (60..86_400)
@@ -85,7 +86,7 @@ module StatelessMcp
         self.class.refuse("The client metadata document has no client_name") if @name.empty?
         @redirect_uris = document["redirect_uris"]
         self.class.refuse("The client metadata document needs redirect_uris, each https or loopback") unless valid_redirect_uris?
-        self.class.refuse("Only public clients, with token_endpoint_auth_method none, can connect") unless public_client?(document)
+        self.class.refuse("Only public clients, which support token_endpoint_auth_method none, can connect") unless public_client?(document)
         self.class.refuse("The client metadata document must allow the authorization code flow") unless authorization_code_flow?(document)
         freeze
       end
@@ -125,9 +126,18 @@ module StatelessMcp
       end
 
       # A client secret in a published document isn't secret. private_key_jwt
-      # would need the client's keys fetched too, which isn't supported.
+      # would need the client's keys fetched too, which isn't supported. A
+      # client that prefers another method but lists none among
+      # token_endpoint_auth_methods_supported, with no shared secret, connects
+      # as a public client (OpenID Connect RP Metadata Choices). ChatGPT's
+      # document is like that, and since this server offers only none, that's
+      # what it uses.
       def public_client?(document)
-        [nil, "none"].include?(document["token_endpoint_auth_method"]) && !document.key?("client_secret")
+        return false if document.key?("client_secret")
+        method = document["token_endpoint_auth_method"]
+        supported = document["token_endpoint_auth_methods_supported"]
+        return [nil, "none"].include?(method) unless supported.is_a?(Array)
+        supported.include?("none") && !supported.intersect?(SHARED_SECRET_METHODS) && (method.nil? || supported.include?(method))
       end
 
       def authorization_code_flow?(document)
